@@ -1,0 +1,23 @@
+# Private Database ('mv OpenAccounting_example.db OpenAccounting.db' if you require example data)
+OpenAccounting.db
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# VSCode or PyCharm config files (optional)
+.vs/
+.vscode/
+.idea/

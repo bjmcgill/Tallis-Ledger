@@ -1,0 +1,65 @@
+# tksheet Project Context
+
+tksheet is a pure Python tkinter spreadsheet widget for creating table/grid interfaces.
+
+## Key Concepts
+
+**Spans** - The primary way to work with cells, rows, and columns:
+- `sheet["A1"]` - single cell
+- `sheet["A:A"]` - entire column A  
+- `sheet[0:5]` - rows 0-4
+- `sheet["A1:C3"]` - cell range
+
+**Core Pattern:**
+```python
+sheet = Sheet(parent, data=data)
+sheet.enable_bindings("all")
+sheet["A1"].data = "value"
+```
+
+## Essential Methods
+
+**Data Access:**
+- `.data` - get/set cell values
+- `.get_sheet_data()` - get all data
+- `.set_sheet_data(data)` - set all data
+
+**UI Features:**
+- `.highlight(bg, fg)` - highlight cells
+- `.dropdown(values)` - create dropdowns  
+- `.checkbox(checked)` - create checkboxes
+- `.format(formatter)` - apply data formatting
+- `.align(direction)` - text alignment
+
+**Events:**
+- `.bind("<<SheetModified>>", callback)` - sheet changes
+- `.edit_validation(func)` - validate user input
+- `.extra_bindings(event, func)` - specific events
+
+**Selection:**
+- `.get_selected_cells()` - get selections
+- `.select_cell(row, col)` - select programmatically
+
+## Common Patterns
+
+**Method Chaining:**
+```python
+sheet["A1"].options(undo=True).highlight(bg="red").align("center")
+```
+
+**Bulk Operations:**
+```python
+sheet["A:A"].data = [f"Row {i}" for i in range(100)]
+```
+
+**Event Handling:**
+```python
+def on_edit(event):
+    return event.value.upper()  # Transform input
+
+sheet.edit_validation(on_edit)
+```
+
+## File Structure
+- tksheet_reference.md - Complete API reference
+- tksheet_examples.py - Working code examples
