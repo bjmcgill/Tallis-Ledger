@@ -22,6 +22,14 @@ class LedgerSheet:
         self.sheet.pack(expand=True, fill="both")
         self.sheet.bind("<ButtonRelease-1>", self.on_cell_click_callback)
     
+    def format_decimal_columns(self, df, include_balance=True):
+        """Format Amount and Balance columns to 2 decimal places."""
+        formatted_data = df.copy()
+        formatted_data['Amount'] = formatted_data['Amount'].apply(lambda x: f"{float(x):.2f}")
+        if include_balance and 'Balance' in formatted_data.columns:
+            formatted_data['Balance'] = formatted_data['Balance'].apply(lambda x: f"{float(x):.2f}")
+        return formatted_data
+    
     def update_data(self, filter_id, filter_type='account', include_balance=True):
         """Update the sheet with data for the selected account or fund."""
         full_df = self.db_manager.fetch_ledger_data(filter_id, filter_type)
@@ -30,8 +38,11 @@ class LedgerSheet:
             # Add balance column with cumulative sum of Amount column
             full_df['Balance'] = full_df['Amount'].cumsum()
         
-        self.sheet.headers(list(full_df.columns))
-        self.sheet.set_sheet_data(full_df.values.tolist())
+        # Format Amount and Balance columns to 2 decimal places
+        formatted_data = self.format_decimal_columns(full_df, include_balance)
+        
+        self.sheet.headers(list(formatted_data.columns))
+        self.sheet.set_sheet_data(formatted_data.values.tolist())
     
     def highlight_row(self, row_index, bg="red", fg="white"):
         """Highlight a specific row with the given colors."""

@@ -65,9 +65,9 @@ class DatabaseManager:
                 Transactions.Id AS TransactionsId,
                 Transactions.UserDate,
                 Transactions.Description,
-                Split.Amount,
                 Fund.Id || ':' || Fund.Name AS FundChoice,
-                Account.Id || ':' || Account.Name AS AccountChoice
+                Account.Id || ':' || Account.Name AS AccountChoice,
+                Split.Amount
             FROM Split
             JOIN Transactions ON Split.Tran_id = Transactions.Id
             LEFT JOIN Fund ON Split.FundId = Fund.Id

@@ -35,7 +35,7 @@ CREATE TABLE Account (
 CREATE TABLE Split (
     Id INTEGER PRIMARY KEY AUTOINCREMENT,
     Tran_id INTEGER,
-    Amount INTEGER,
+    Amount REAL,
     FundId INTEGER,
     AccountId INTEGER,
     FOREIGN KEY (Tran_id) REFERENCES Transactions(Id),
@@ -49,8 +49,8 @@ CREATE INDEX idx_transactions_userdate ON Transactions(UserDate);
 
 -- Insert default "No Fund" entry
 INSERT INTO Fund (Id, Name, Type) VALUES
-(0, "No Fund", "Default");
+(0, "No Fund", "SPECIAL");
 
 -- Insert default "No Account" entry
 INSERT INTO Account (Id, Name, Type) VALUES
-(0, "No Account", "Default");
+(0, "No Account", "SPECIAL");

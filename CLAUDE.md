@@ -147,13 +147,20 @@ def fetch_new_data(self, param):
 ### Working with tksheet
 ```python
 # In ledger_sheet.py - LedgerSheet class
-# Update sheet data with dynamic headers
-def update_data(self, account_id, include_balance=True):
-    full_df = self.db_manager.fetch_ledger_data(account_id)
+# Update sheet data with dynamic headers and formatted amounts
+def update_data(self, filter_id, filter_type='account', include_balance=True):
+    full_df = self.db_manager.fetch_ledger_data(filter_id, filter_type)
     if include_balance:
         full_df['Balance'] = full_df['Amount'].cumsum()
-    self.sheet.headers(list(full_df.columns))
-    self.sheet.set_sheet_data(full_df.values.tolist())
+    
+    # Format Amount and Balance columns to 2 decimal places
+    formatted_data = full_df.copy()
+    formatted_data['Amount'] = formatted_data['Amount'].apply(lambda x: f"{float(x):.2f}")
+    if include_balance:
+        formatted_data['Balance'] = formatted_data['Balance'].apply(lambda x: f"{float(x):.2f}")
+    
+    self.sheet.headers(list(formatted_data.columns))
+    self.sheet.set_sheet_data(formatted_data.values.tolist())
 
 # Setup dropdowns for editable rows
 def setup_dropdowns(self, start_row, end_row):
@@ -200,6 +207,17 @@ def save_edit_mode(self):
         if success:
             self.cancel_edit_mode()
 
+# Collect splits data - convert formatted amounts back to float
+def _collect_splits_data(self, current_data):
+    splits_data = []
+    for i in range(self.start_idx, self.end_idx):
+        row = current_data[i]
+        amount = float(row[6])  # Amount column - convert formatted string to float
+        fund_choice = row[4]  # FundChoice column
+        account_choice = row[5]  # AccountChoice column
+        # Extract IDs from choice strings and create splits_data
+    return splits_data
+
 # Cancel edit mode - restore balance column and normal view
 def cancel_edit_mode(self):
     if self.mode == "edit":
@@ -218,7 +236,8 @@ from ledger_sheet import LedgerSheet
 ## Important Notes
 
 ### Database and Schema
-- The application uses integer amounts (likely in cents) for financial calculations
+- The application uses REAL (float) amounts for financial calculations with 2 decimal place precision
+- All monetary amounts are stored as floating point numbers in the Split.Amount column
 - Foreign key constraints are enabled in SQLite
 - Double-entry bookkeeping is enforced with transaction splits that sum to zero
 - Account and Fund tables use Type fields (25 characters) for categorization
@@ -228,6 +247,7 @@ from ledger_sheet import LedgerSheet
 ### User Interface
 - The UI prevents editing multiple rows simultaneously except for transaction splits
 - The Balance column is calculated dynamically and not stored in the database
+- Amount and Balance columns are automatically formatted to 2 decimal places for display
 - Account and fund dropdown functionality is applied dynamically to editable rows
 - All database columns are displayed automatically without hardcoded filtering
 - Dropdowns are ordered by ID and initialized with current values
