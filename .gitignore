@@ -1,5 +1,5 @@
-# Private Database ('mv OpenAccounting_example.db OpenAccounting.db' if you require example data)
-OpenAccounting.db
+# Private Databases
+*.db
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

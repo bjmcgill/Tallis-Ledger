@@ -1,0 +1,103 @@
+"""
+Ledger sheet module for Tallis Ledger.
+Wraps the tksheet widget and handles data display.
+"""
+
+from tksheet import Sheet
+
+
+class LedgerSheet:
+    """Wraps the tksheet widget and handles data display."""
+    
+    def __init__(self, sheet_frame, db_manager, on_cell_click_callback):
+        self.sheet_frame = sheet_frame
+        self.db_manager = db_manager
+        self.on_cell_click_callback = on_cell_click_callback
+        
+        self.sheet = Sheet(self.sheet_frame,
+                          data=[],
+                          headers=[],
+                          editable=True)
+        self.sheet.enable_bindings(("single_select", "edit_cell"))
+        self.sheet.pack(expand=True, fill="both")
+        self.sheet.bind("<ButtonRelease-1>", self.on_cell_click_callback)
+    
+    def update_data(self, filter_id, filter_type='account', include_balance=True):
+        """Update the sheet with data for the selected account or fund."""
+        full_df = self.db_manager.fetch_ledger_data(filter_id, filter_type)
+        
+        if include_balance:
+            # Add balance column with cumulative sum of Amount column
+            full_df['Balance'] = full_df['Amount'].cumsum()
+        
+        self.sheet.headers(list(full_df.columns))
+        self.sheet.set_sheet_data(full_df.values.tolist())
+    
+    def highlight_row(self, row_index, bg="red", fg="white"):
+        """Highlight a specific row with the given colors."""
+        self.sheet.highlight_rows(rows=[row_index], bg=bg, fg=fg)
+    
+    def get_selected_row(self):
+        """Get the currently selected row index."""
+        return self.sheet.get_currently_selected()[0]
+    
+    def get_current_data(self):
+        """Get all current sheet data."""
+        return self.sheet.get_sheet_data()
+    
+    def set_row_readonly(self, start_row, end_row=None, readonly=True):
+        """Set specific rows to readonly or editable."""
+        self.sheet.span(start_row, 0, end_row, None).readonly(readonly)
+  
+    def set_all_readonly(self, readonly=True):
+        """Set all rows to readonly or editable."""
+        self.sheet.span(0, 0, None, None).readonly(readonly)
+    
+    def setup_account_dropdown(self, start_row, end_row):
+        """Set up account dropdown for the specified row range."""
+        # Get all account options from database
+        account_options = self.db_manager.fetch_chart_options()
+        dropdown_values = [f"{row['Id']}:{row['Name']}" for _, row in account_options.iterrows()]
+        
+        # Find the AccountChoice column index
+        headers = self.sheet.headers()
+        try:
+            account_col_idx = headers.index('AccountChoice')
+            # Apply dropdown to the AccountChoice column for the specified rows
+            for row in range(start_row, end_row):
+                # Get the current value in the cell
+                current_value = self.sheet[row, account_col_idx].data
+                # Set up dropdown with current value selected
+                self.sheet[row, account_col_idx].dropdown(
+                    values=dropdown_values,
+                    set_value=current_value
+                )
+        except ValueError:
+            print("AccountChoice column not found in headers")
+    
+    def setup_fund_dropdown(self, start_row, end_row):
+        """Set up fund dropdown for the specified row range."""
+        # Get all fund options from database
+        fund_options = self.db_manager.fetch_fund_options()
+        dropdown_values = [f"{row['Id']}:{row['Name']}" for _, row in fund_options.iterrows()]
+        
+        # Find the FundChoice column index
+        headers = self.sheet.headers()
+        try:
+            fund_col_idx = headers.index('FundChoice')
+            # Apply dropdown to the FundChoice column for the specified rows
+            for row in range(start_row, end_row):
+                # Get the current value in the cell
+                current_value = self.sheet[row, fund_col_idx].data
+                # Set up dropdown with current value selected
+                self.sheet[row, fund_col_idx].dropdown(
+                    values=dropdown_values,
+                    set_value=current_value
+                )
+        except ValueError:
+            print("FundChoice column not found in headers")
+    
+    def setup_dropdowns(self, start_row, end_row):
+        """Set up both account and fund dropdowns for the specified row range."""
+        self.setup_account_dropdown(start_row, end_row)
+        self.setup_fund_dropdown(start_row, end_row)
