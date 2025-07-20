@@ -4,7 +4,7 @@ Contains the main Application class that coordinates all components.
 """
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from database import DatabaseManager
 from ui_components import AccountSelector, FundSelector, EditModeManager
 from ledger_sheet import LedgerSheet
@@ -306,6 +306,15 @@ class Application:
         if self.mode == "edit":
             current_data = self.ledger_sheet.get_current_data()
             
+            # Validate that transaction amounts sum to zero
+            if not self._validate_transaction_balance(current_data):
+                messagebox.showwarning(
+                    "Transaction Not Balanced",
+                    "The sum of all amounts in the current transaction should equal zero. "
+                    "Please use the balance split button to achieve this."
+                )
+                return
+            
             # Use stored transaction details from when edit mode was entered
             user_date = self.selected_user_date
             description = self.selected_description
@@ -325,6 +334,30 @@ class Application:
                 self.cancel_edit_mode()
             else:
                 print("Failed to save transaction")
+    
+    def _validate_transaction_balance(self, current_data):
+        """Validate that the transaction amounts sum to zero."""
+        total_amount = 0.0
+        
+        for i in range(self.start_idx, self.end_idx):
+            try:
+                amount_str = current_data[i][6]  # Amount column
+                amount = float(amount_str)
+                total_amount += amount
+            except (ValueError, IndexError):
+                if _DEBUG:
+                    print(f"Could not parse amount in row {i}: {amount_str}")
+                # For validation purposes, treat invalid amounts as 0
+                continue
+        
+        # Check if the sum is close to zero (accounting for floating point precision)
+        is_balanced = abs(total_amount) < 0.01
+        
+        if _DEBUG:
+            print(f"Transaction balance validation: sum = {total_amount:.2f}, "
+                  f"balanced = {is_balanced}")
+        
+        return is_balanced
     
     def _collect_splits_data(self, current_data):
         """Collect splits data from the edited rows."""
@@ -496,3 +529,49 @@ class Application:
             if _DEBUG:
                 print(f"Deleted split row at index {selected_row}, "
                       f"new end_idx: {self.end_idx}")
+
+    def balance_split_row(self):
+        """Balance the currently selected split to make transaction sum to zero."""
+        if self.mode == "edit":
+            # Get the currently selected row from the sheet
+            selected_cells = self.ledger_sheet.sheet.get_currently_selected()
+            if not selected_cells:
+                if _DEBUG:
+                    print("No row selected for balancing")
+                return
+
+            selected_row = selected_cells[0]  # Get the row index
+
+            # Check if the selected row is within the editable transaction range
+            if not (self.start_idx <= selected_row < self.end_idx):
+                if _DEBUG:
+                    print(f"Selected row {selected_row} is not in editable range "
+                          f"({self.start_idx}-{self.end_idx-1})")
+                return
+
+            # Get current data
+            current_data = self.ledger_sheet.get_current_data()
+
+            # Calculate the sum of all amounts except the selected row
+            total_other_amounts = 0.0
+            for i in range(self.start_idx, self.end_idx):
+                if i != selected_row:
+                    try:
+                        amount_str = current_data[i][6]  # Amount column
+                        amount = float(amount_str)
+                        total_other_amounts += amount
+                    except (ValueError, IndexError):
+                        if _DEBUG:
+                            print(f"Could not parse amount in row {i}: {amount_str}")
+                        continue
+
+            # Calculate the balancing amount (negative of the sum)
+            balancing_amount = -total_other_amounts
+
+            # Set the balancing amount in the selected row
+            formatted_amount = f"{balancing_amount:.2f}"
+            self.ledger_sheet.sheet.set_cell_data(selected_row, 6, formatted_amount)
+
+            if _DEBUG:
+                print(f"Balanced row {selected_row}: set amount to {formatted_amount} "
+                      f"(sum of others: {total_other_amounts:.2f})")

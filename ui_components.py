@@ -149,8 +149,11 @@ class EditModeManager:
             print("Delete Split clicked - application reference not available")
     
     def _placeholder_balance_split(self):
-        """Placeholder for balance split functionality."""
-        print("Balance Split clicked - functionality not implemented yet")
+        """Balance the currently selected split to ensure transaction sums to zero."""
+        if self.application and hasattr(self.application, 'balance_split_row'):
+            self.application.balance_split_row()
+        else:
+            print("Balance Split clicked - application reference not available")
     
     def _placeholder_delete_transaction(self):
         """Placeholder for delete transaction functionality."""

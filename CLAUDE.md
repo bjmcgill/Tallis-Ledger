@@ -129,7 +129,11 @@ pip install -r requirements.txt
    - Edit user_date or description → automatically updates all splits in transaction
    - Add Split: Inserts new row after last selected position with current dropdown values
    - Delete Split: Removes selected editable row (prevents deletion of last split)
-5. **Save/Cancel**: Uses stored original transaction details for database operations
+   - Balance Split: Calculates and sets amount for selected row to make transaction sum to zero
+5. **Save/Cancel**: 
+   - Save validates transaction balance (must sum to zero) before database operations
+   - Uses stored original transaction details for consistency
+   - Shows warning message if transaction is unbalanced, prevents saving
 
 ### Event Handling
 - Cell selection triggers edit mode entry and stores transaction metadata
@@ -138,6 +142,8 @@ pip install -r requirements.txt
 - Application tracks selected row, transaction ID, user date, and description separately
 - Add Split intelligently positions new rows after last selected row
 - Delete Split validates selection and prevents deletion of last remaining split
+- Balance Split ensures double-entry bookkeeping by making transaction amounts sum to zero
+- Save Transaction validates balance before saving, shows warning if unbalanced
 - Readonly spans prevent editing of non-transaction rows
 - Account and fund dropdowns use "Id:Name" format with no spaces
 - Dropdowns are initialized with current database values ordered by ID
@@ -212,9 +218,17 @@ def enter_edit_mode(self, event=None):
         # Set up edit validation for user_date and description synchronization
         self.ledger_sheet.sheet.edit_validation(self.after_cell_edit)
 
-# Save edit mode - use stored transaction details for consistency
+# Save edit mode - validate balance and use stored transaction details
 def save_edit_mode(self):
     if self.mode == "edit":
+        # Validate that transaction amounts sum to zero
+        if not self._validate_transaction_balance(current_data):
+            messagebox.showwarning(
+                "Transaction Not Balanced",
+                "The sum of all amounts in the current transaction should equal zero. "
+                "Please use the balance split button to achieve this."
+            )
+            return
         # Use stored original transaction details, not current row data
         user_date = self.selected_user_date
         description = self.selected_description
@@ -222,6 +236,18 @@ def save_edit_mode(self):
         success = self.db_manager.save_transaction(
             self.selected_tran_id, user_date, description, splits_data
         )
+
+# Validate transaction balance - ensure double-entry bookkeeping compliance
+def _validate_transaction_balance(self, current_data):
+    total_amount = 0.0
+    for i in range(self.start_idx, self.end_idx):
+        try:
+            amount = float(current_data[i][6])  # Amount column
+            total_amount += amount
+        except (ValueError, IndexError):
+            continue  # Treat invalid amounts as 0 for validation
+    # Check if sum is close to zero (accounting for floating point precision)
+    return abs(total_amount) < 0.01
 
 # Add split - insert new row after last selected position
 def add_split_row(self):
@@ -243,6 +269,24 @@ def delete_split_row(self):
         if self.end_idx - self.start_idx <= 1:  # Prevent deletion of last split
             return
         # Validate selection is within editable range and remove row
+
+# Balance split - ensure transaction sums to zero
+def balance_split_row(self):
+    if self.mode == "edit":
+        selected_cells = self.ledger_sheet.sheet.get_currently_selected()
+        selected_row = selected_cells[0]
+        # Validate selection is within editable range
+        if self.start_idx <= selected_row < self.end_idx:
+            # Calculate sum of all other amounts in transaction
+            total_other_amounts = 0.0
+            for i in range(self.start_idx, self.end_idx):
+                if i != selected_row:
+                    amount = float(current_data[i][6])  # Amount column
+                    total_other_amounts += amount
+            # Set balancing amount (negative of sum) to make total zero
+            balancing_amount = -total_other_amounts
+            formatted_amount = f"{balancing_amount:.2f}"
+            self.ledger_sheet.sheet.set_cell_data(selected_row, 6, formatted_amount)
 
 # Collect splits data - convert formatted amounts back to float
 def _collect_splits_data(self, current_data):
