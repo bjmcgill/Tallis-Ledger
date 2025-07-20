@@ -139,6 +139,38 @@ class DatabaseManager:
                 VALUES (?, ?, ?, ?)
             """, (tran_id, split['amount'], split['fund_id'], split['account_id']))
     
+    def soft_delete_transaction(self, tran_id):
+        """
+        Soft delete a transaction by setting Deleted = 1.
+        Does not modify the Split table.
+        
+        Args:
+            tran_id: Transaction ID to delete
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Update the transaction to mark it as deleted
+            self.cursor.execute("""
+                UPDATE Transactions 
+                SET Deleted = 1, Deleted_at = CURRENT_TIMESTAMP 
+                WHERE Id = ? AND Deleted = 0
+            """, (tran_id,))
+            
+            # Check if a row was actually updated
+            if self.cursor.rowcount > 0:
+                self.conn.commit()
+                return True
+            else:
+                # Transaction was not found or already deleted
+                return False
+                
+        except Exception as e:
+            self.conn.rollback()
+            print(f"Error soft deleting transaction {tran_id}: {e}")
+            return False
+    
     # ========== CONNECTION MANAGEMENT ==========
     
     def close(self):
@@ -150,6 +182,6 @@ class DatabaseManager:
         """Context manager entry."""
         return self
     
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, _exc_type, _exc_val, _exc_tb):
         """Context manager exit."""
         self.close()

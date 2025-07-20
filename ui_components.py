@@ -156,5 +156,8 @@ class EditModeManager:
             print("Balance Split clicked - application reference not available")
     
     def _placeholder_delete_transaction(self):
-        """Placeholder for delete transaction functionality."""
-        print("Delete Transaction clicked - functionality not implemented yet")
+        """Delete the current transaction (soft delete)."""
+        if self.application and hasattr(self.application, 'delete_transaction'):
+            self.application.delete_transaction()
+        else:
+            print("Delete Transaction clicked - application reference not available")

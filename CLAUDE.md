@@ -130,6 +130,7 @@ pip install -r requirements.txt
    - Add Split: Inserts new row after last selected position with current dropdown values
    - Delete Split: Removes selected editable row (prevents deletion of last split)
    - Balance Split: Calculates and sets amount for selected row to make transaction sum to zero
+   - Delete Transaction: Soft deletes entire transaction with confirmation dialog
 5. **Save/Cancel**: 
    - Save validates transaction balance (must sum to zero) before database operations
    - Uses stored original transaction details for consistency
@@ -144,6 +145,7 @@ pip install -r requirements.txt
 - Delete Split validates selection and prevents deletion of last remaining split
 - Balance Split ensures double-entry bookkeeping by making transaction amounts sum to zero
 - Save Transaction validates balance before saving, shows warning if unbalanced
+- Delete Transaction performs soft delete with confirmation, preserves audit trail
 - Readonly spans prevent editing of non-transaction rows
 - Account and fund dropdowns use "Id:Name" format with no spaces
 - Dropdowns are initialized with current database values ordered by ID
@@ -248,6 +250,40 @@ def _validate_transaction_balance(self, current_data):
             continue  # Treat invalid amounts as 0 for validation
     # Check if sum is close to zero (accounting for floating point precision)
     return abs(total_amount) < 0.01
+
+# Delete transaction - soft delete with confirmation
+def delete_transaction(self):
+    if self.mode == "edit" and self.selected_tran_id:
+        # Ask for confirmation with transaction details
+        result = messagebox.askyesno(
+            "Delete Transaction",
+            f"Are you sure you want to delete transaction {self.selected_tran_id}?\n\n"
+            f"Date: {self.selected_user_date}\n"
+            f"Description: {self.selected_description}\n\n"
+            f"This action cannot be undone."
+        )
+        if result:
+            # Perform soft delete in database (only affects Transactions table)
+            success = self.db_manager.soft_delete_transaction(self.selected_tran_id)
+            if success:
+                self.cancel_edit_mode()  # Exit edit mode
+                self.update_table_with_account()  # Refresh view
+                messagebox.showinfo("Transaction Deleted", 
+                                  f"Transaction {self.selected_tran_id} has been successfully deleted.")
+
+# Database soft delete - preserves audit trail
+def soft_delete_transaction(self, tran_id):
+    try:
+        # Update only Transactions table, leave Split table unchanged
+        self.cursor.execute("""
+            UPDATE Transactions 
+            SET Deleted = 1, Deleted_at = CURRENT_TIMESTAMP 
+            WHERE Id = ? AND Deleted = 0
+        """, (tran_id,))
+        return self.cursor.rowcount > 0  # True if row was updated
+    except Exception as e:
+        self.conn.rollback()
+        return False
 
 # Add split - insert new row after last selected position
 def add_split_row(self):

@@ -575,3 +575,48 @@ class Application:
             if _DEBUG:
                 print(f"Balanced row {selected_row}: set amount to {formatted_amount} "
                       f"(sum of others: {total_other_amounts:.2f})")
+
+    def delete_transaction(self):
+        """Soft delete the current transaction being edited."""
+        if self.mode == "edit" and self.selected_tran_id:
+            # Ask for confirmation before deleting
+            result = messagebox.askyesno(
+                "Delete Transaction",
+                f"Are you sure you want to delete transaction {self.selected_tran_id}?\n\n"
+                f"Date: {self.selected_user_date}\n"
+                f"Description: {self.selected_description}\n\n"
+                f"This action cannot be undone."
+            )
+            
+            if result:
+                # Perform soft delete in database
+                success = self.db_manager.soft_delete_transaction(self.selected_tran_id)
+                
+                if success:
+                    if _DEBUG:
+                        print(f"Successfully soft deleted transaction {self.selected_tran_id}")
+                    
+                    # Exit edit mode and refresh the view
+                    self.cancel_edit_mode()
+                    
+                    # Refresh the current view to hide the deleted transaction
+                    if self.current_filter_type == "account":
+                        self.update_table_with_account()
+                    else:
+                        self.update_table_with_fund()
+                        
+                    # Show success message
+                    messagebox.showinfo(
+                        "Transaction Deleted",
+                        f"Transaction {self.selected_tran_id} has been successfully deleted."
+                    )
+                else:
+                    # Show error message
+                    messagebox.showerror(
+                        "Delete Failed",
+                        f"Failed to delete transaction {self.selected_tran_id}. "
+                        f"Please try again."
+                    )
+            else:
+                if _DEBUG:
+                    print("Transaction deletion cancelled by user")
