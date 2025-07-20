@@ -63,6 +63,8 @@ class Application:
         self.mode = "initial"
         self.selected_row = None
         self.selected_tran_id = None
+        self.selected_user_date = None
+        self.selected_description = None
         self.current_filter_type = "account"  # 'account' or 'fund'
         
         # Create main layout frames using ttk
@@ -171,11 +173,14 @@ class Application:
         if self.mode == "initial":
             self.selected_row = self.ledger_sheet.get_selected_row()
             
-            # Get current data to extract Tran_id
+            # Get current data to extract transaction details
             current_data = self.ledger_sheet.get_current_data()
             if self.selected_row < len(current_data):
-                # TransactionsId is at index 1 in the display columns
-                self.selected_tran_id = current_data[self.selected_row][1]
+                # Store transaction details from the selected row
+                selected_row_data = current_data[self.selected_row]
+                self.selected_tran_id = selected_row_data[1]      # TransactionsId at index 1
+                self.selected_user_date = selected_row_data[2]    # UserDate at index 2
+                self.selected_description = selected_row_data[3]  # Description at index 3
                 
                 # Get data without balance column for edit mode
                 if self.current_filter_type == "account":
@@ -242,8 +247,9 @@ class Application:
         if self.mode == "edit":
             current_data = self.ledger_sheet.get_current_data()
             
-            # Extract transaction details
-            user_date, description = self._extract_transaction_details(current_data)
+            # Use stored transaction details from when edit mode was entered
+            user_date = self.selected_user_date
+            description = self.selected_description
             
             # Collect splits data
             splits_data = self._collect_splits_data(current_data)
@@ -260,13 +266,6 @@ class Application:
                 self.cancel_edit_mode()
             else:
                 print("Failed to save transaction")
-    
-    def _extract_transaction_details(self, current_data):
-        """Extract transaction date and description from the first split row."""
-        first_row = current_data[self.start_idx]
-        user_date = first_row[2]  # UserDate column
-        description = first_row[3]  # Description column
-        return user_date, description
     
     def _collect_splits_data(self, current_data):
         """Collect splits data from the edited rows."""
@@ -308,36 +307,54 @@ class Application:
             self.fund_selector.set_enabled(True)
             self.selected_row = None
             self.selected_tran_id = None
+            self.selected_user_date = None
+            self.selected_description = None
             self.edit_mode_manager.hide_edit_buttons()
             self.ledger_sheet.set_all_readonly(True)
     
     def add_split_row(self):
-        """Add a new split row to the current transaction in edit mode."""
+        """Add a new split row to the current transaction in edit mode after the last selected row."""
         if self.mode == "edit":
             # Get current data
             current_data = self.ledger_sheet.get_current_data()
             
+            # Get the currently selected row from the sheet
+            selected_cells = self.ledger_sheet.sheet.get_currently_selected()
+            if selected_cells:
+                last_selected_row = selected_cells[0]  # Get the row index
+            else:
+                # No selection, default to end of editable rows
+                last_selected_row = self.end_idx - 1
+            
+            # Determine insertion position
+            if last_selected_row < self.start_idx:
+                # Selected row is before editable rows, insert at start of editable rows
+                insert_position = self.start_idx
+            elif last_selected_row >= self.end_idx:
+                # Selected row is after editable rows, insert at end of editable rows
+                insert_position = self.end_idx
+            else:
+                # Selected row is within editable rows, insert after it
+                insert_position = last_selected_row + 1
+            
             # Create a new empty row with the same structure as transaction rows
-            # Copy structure from existing transaction row but with empty/default values
             if self.start_idx < len(current_data):
-                template_row = current_data[self.start_idx].copy()
-                
                 # Get current selections from dropdowns
                 current_fund_selection = self.fund_selector.selected_fund.get()
                 current_account_selection = self.account_selector.selected_account.get()
                 
                 new_row = [
                     0,  # SplitId (will be set when saved)
-                    template_row[1],  # TransactionsId (same as current transaction)
-                    template_row[2],  # UserDate (same as current transaction)
-                    template_row[3],  # Description (same as current transaction)
+                    self.selected_tran_id,  # TransactionsId (from stored transaction)
+                    self.selected_user_date,  # UserDate (from stored transaction)
+                    self.selected_description,  # Description (from stored transaction)
                     current_fund_selection,  # FundChoice (from current fund selector)
                     current_account_selection,  # AccountChoice (from current account selector)
                     "0.00"  # Amount (empty)
                 ]
                 
-                # Insert the new row at end_idx
-                new_data = current_data[:self.end_idx] + [new_row] + current_data[self.end_idx:]
+                # Insert the new row at the determined position
+                new_data = current_data[:insert_position] + [new_row] + current_data[insert_position:]
                 
                 # Update the sheet with new data
                 self.ledger_sheet.sheet.set_sheet_data(new_data)
@@ -361,7 +378,7 @@ class Application:
                 self.ledger_sheet.set_row_readonly(self.start_idx, self.end_idx, False)
                 
                 if _DEBUG:
-                    print(f"Added new split row at index {self.end_idx - 1}, new end_idx: {self.end_idx}")
+                    print(f"Added new split row at index {insert_position}, new end_idx: {self.end_idx}, last_selected_row: {last_selected_row}")
     
     def delete_split_row(self):
         """Delete the currently selected split row in edit mode."""

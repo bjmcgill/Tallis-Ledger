@@ -4,25 +4,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Application Overview
 
-Tallis Ledger is a Tkinter-based accounting application that provides a spreadsheet-like interface for managing financial transactions. The application uses SQLite as its database and the tksheet library for the interactive data grid.
+Tallis Ledger is a modern Tkinter-based accounting application that provides a professional spreadsheet-like interface for managing financial transactions. The application uses SQLite for data persistence and the tksheet library for the interactive data grid with comprehensive edit mode functionality.
 
 ### Core Architecture
 
-The application follows a modular architecture with clear separation of concerns:
+The application follows a modular architecture with clear separation of concerns and professional cross-platform styling:
 
 **Module Structure:**
 - **`main.py`**: Application entry point
-- **`application.py`**: Main Application class coordinating all components
-- **`database.py`**: DatabaseManager class for all SQLite operations
-- **`ui_components.py`**: ChartSelector and EditModeManager classes
-- **`ledger_sheet.py`**: LedgerSheet class wrapping tksheet widget
+- **`application.py`**: Main Application class coordinating all components with TTK styling
+- **`database.py`**: DatabaseManager class for all SQLite operations with REAL amount precision
+- **`ui_components.py`**: AccountSelector, FundSelector, and EditModeManager classes using TTK widgets
+- **`ledger_sheet.py`**: LedgerSheet class wrapping tksheet widget with decimal formatting
 
 **Key Classes:**
-- **DatabaseManager**: Handles all SQLite database operations and queries
-- **ChartSelector**: Manages the account dropdown selection widget
-- **EditModeManager**: Controls the edit mode UI state and buttons
-- **LedgerSheet**: Wraps the tksheet widget and handles data display
-- **Application**: Main controller that coordinates all components
+- **DatabaseManager**: Handles all SQLite database operations with foreign key constraints
+- **AccountSelector**: Manages the account dropdown selection with "Id:Name" format
+- **FundSelector**: Manages the fund dropdown selection with "Id:Name" format  
+- **EditModeManager**: Controls edit mode UI with comprehensive button set (Cancel, Save, Add Split, Delete Split, Balance Split, Delete Transaction)
+- **LedgerSheet**: Wraps tksheet widget with decimal formatting and dropdown support
+- **Application**: Main controller with cross-platform window management and TTK styling
 
 ### Database Schema
 
@@ -108,27 +109,38 @@ pip install -r requirements.txt
 - All other rows remain readonly
 
 ### Data Flow
-1. User selects an account from the dropdown
-2. `fetch_ledger_data()` retrieves transactions for that account
-3. Data is displayed in the tksheet grid with Balance column added
-4. User clicks on a transaction row to enter edit mode
-5. System fetches all splits for that transaction using `fetch_transaction_data()`
-6. Edit mode displays transaction splits with account and fund dropdowns, removes Balance column
-7. User can modify transaction data, account assignments, and fund assignments
-8. User clicks Save to persist changes or Cancel to discard changes
-9. On save, data is validated and written to database using `save_transaction()`
-10. On cancel/save completion, Balance column is restored and normal view is resumed
+1. User selects an account or fund from the dropdown selectors
+2. `fetch_ledger_data()` retrieves transactions with formatted choice fields ("Id:Name")
+3. Data is displayed in the tksheet grid with decimal formatting and Balance column
+4. User clicks on any cell to enter edit mode for that transaction
+5. System stores original transaction details (tran_id, user_date, description) from selected row
+6. All splits for the transaction are fetched and displayed as editable rows
+7. Edit mode removes Balance column and highlights transaction splits in red
+8. User can add/delete splits, modify amounts, and change account/fund assignments
+9. Save preserves stored original transaction details while updating split data
+10. Cancel/save completion restores Balance column and normal view
+
+### Edit Mode Workflow
+1. **Enter Edit Mode**: Click on any cell → stores transaction details from selected row
+2. **Display Splits**: All splits for transaction shown as red highlighted editable rows
+3. **Edit Operations**: 
+   - Modify amounts, fund choices, account choices in editable rows
+   - Add Split: Inserts new row after last selected position with current dropdown values
+   - Delete Split: Removes selected editable row (prevents deletion of last split)
+4. **Save/Cancel**: Uses stored original transaction details for database operations
 
 ### Event Handling
-- Cell selection triggers edit mode entry
-- Edit mode shows Cancel/Save/Delete buttons
-- The application tracks the selected row and transaction ID for edit operations
-- Readonly spans prevent editing of non-selected rows
-- Account and fund dropdown functionality is dynamically applied to editable rows
-- Dropdowns are initialized with current values from database
-- Red highlighting indicates editable transaction splits
-- Save button persists changes to database with full transaction replacement
-- Cancel button discards changes and restores original view
+- Cell selection triggers edit mode entry and stores transaction metadata
+- Edit mode shows comprehensive button set: Cancel, Save Transaction, Add Split, Delete Split, Balance Split, Delete Transaction
+- Application tracks selected row, transaction ID, user date, and description separately
+- Add Split intelligently positions new rows after last selected row
+- Delete Split validates selection and prevents deletion of last remaining split
+- Readonly spans prevent editing of non-transaction rows
+- Account and fund dropdowns use "Id:Name" format with no spaces
+- Dropdowns are initialized with current database values ordered by ID
+- Red highlighting with white text indicates editable transaction splits
+- Save uses stored transaction details for consistency regardless of current row changes
+- Cancel restores original view with balance calculations
 
 ## Code Patterns
 
@@ -195,17 +207,37 @@ def enter_edit_mode(self, event=None):
         self.ledger_sheet.set_row_readonly(start_idx, end_idx, False)
         self.ledger_sheet.setup_dropdowns(start_idx, end_idx)
 
-# Save edit mode - persist changes to database
+# Save edit mode - use stored transaction details for consistency
 def save_edit_mode(self):
     if self.mode == "edit":
-        current_data = self.ledger_sheet.get_current_data()
-        user_date, description = self._extract_transaction_details(current_data)
+        # Use stored original transaction details, not current row data
+        user_date = self.selected_user_date
+        description = self.selected_description
         splits_data = self._collect_splits_data(current_data)
         success = self.db_manager.save_transaction(
             self.selected_tran_id, user_date, description, splits_data
         )
-        if success:
-            self.cancel_edit_mode()
+
+# Add split - insert new row after last selected position
+def add_split_row(self):
+    if self.mode == "edit":
+        selected_cells = self.ledger_sheet.sheet.get_currently_selected()
+        last_selected_row = selected_cells[0] if selected_cells else self.end_idx - 1
+        # Smart positioning: after selected row or at start/end of editable range
+        current_fund_selection = self.fund_selector.selected_fund.get()
+        current_account_selection = self.account_selector.selected_account.get()
+        # Use stored transaction details for new row
+        new_row = [0, self.selected_tran_id, self.selected_user_date, 
+                  self.selected_description, current_fund_selection, 
+                  current_account_selection, "0.00"]
+
+# Delete split - remove selected row with validation
+def delete_split_row(self):
+    if self.mode == "edit":
+        selected_cells = self.ledger_sheet.sheet.get_currently_selected()
+        if self.end_idx - self.start_idx <= 1:  # Prevent deletion of last split
+            return
+        # Validate selection is within editable range and remove row
 
 # Collect splits data - convert formatted amounts back to float
 def _collect_splits_data(self, current_data):
@@ -213,23 +245,27 @@ def _collect_splits_data(self, current_data):
     for i in range(self.start_idx, self.end_idx):
         row = current_data[i]
         amount = float(row[6])  # Amount column - convert formatted string to float
-        fund_choice = row[4]  # FundChoice column
-        account_choice = row[5]  # AccountChoice column
-        # Extract IDs from choice strings and create splits_data
+        fund_choice = row[4]  # FundChoice column (format: "Id:Name")
+        account_choice = row[5]  # AccountChoice column (format: "Id:Name")
+        # Extract IDs from choice strings: split(':')[0]
+        fund_id = int(fund_choice.split(':')[0]) if fund_choice else 0
+        account_id = int(account_choice.split(':')[0]) if account_choice else 0
     return splits_data
 
-# Cancel edit mode - restore balance column and normal view
+# Cancel edit mode - clear stored data and restore view
 def cancel_edit_mode(self):
     if self.mode == "edit":
-        self.ledger_sheet.update_data(account_id, include_balance=True)
         self.mode = "initial"
+        self.selected_tran_id = None
+        self.selected_user_date = None
+        self.selected_description = None
 ```
 
 ### Module Imports
 ```python
 # Import specific classes from modules
 from database import DatabaseManager
-from ui_components import ChartSelector, EditModeManager
+from ui_components import AccountSelector, FundSelector, EditModeManager
 from ledger_sheet import LedgerSheet
 ```
 
