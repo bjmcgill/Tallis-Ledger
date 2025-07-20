@@ -19,10 +19,10 @@ class Application:
     def __init__(self, root):
         self.root = root
         self.root.title("Tallis Ledger - Accounting Application")
-        
+
         # Configure ttk style for professional appearance
         self.style = ttk.Style()
-        
+
         # Try to use a native theme for better cross-platform appearance
         available_themes = self.style.theme_names()
         if 'aqua' in available_themes:  # macOS
@@ -33,13 +33,13 @@ class Application:
             self.style.theme_use('xpnative')
         elif 'clam' in available_themes:  # Cross-platform modern theme
             self.style.theme_use('clam')
-        
+
         # Configure custom styles
         self._configure_styles()
-        
+
         # Maximize window on startup
         self.root.resizable(True, True)
-        
+
         # Cross-platform window maximization
         try:
             # Try different methods depending on the platform
@@ -52,20 +52,23 @@ class Application:
                 screen_width = self.root.winfo_screenwidth()
                 screen_height = self.root.winfo_screenheight()
                 self.root.geometry(f"{screen_width}x{screen_height-100}+0+0")
-        except:
+        except Exception:
             # Fallback: try to maximize using geometry
             try:
                 self.root.state('zoomed')
-            except:
+            except Exception:
                 # Final fallback: set large window size
                 self.root.geometry("1400x900+50+50")
         
+        # Initialize instance variables
         self.mode = "initial"
         self.selected_row = None
         self.selected_tran_id = None
         self.selected_user_date = None
         self.selected_description = None
         self.current_filter_type = "account"  # 'account' or 'fund'
+        self.start_idx = None
+        self.end_idx = None
         
         # Create main layout frames using ttk
         self.main_container = ttk.Frame(root, style='Main.TFrame')
@@ -80,11 +83,17 @@ class Application:
         self.button_frame.pack(side="top", pady=(0, 5), fill="x")
         
         # Create a container frame for the sheet with professional border
-        self.sheet_container = ttk.Frame(self.main_container, style='SheetContainer.TFrame', relief="sunken", borderwidth=1)
+        self.sheet_container = ttk.Frame(
+            self.main_container,
+            style='SheetContainer.TFrame',
+            relief="sunken",
+            borderwidth=1
+        )
         self.sheet_container.pack(expand=True, fill="both")
         
         # Create the sheet frame inside the container
-        self.sheet_frame = tk.Frame(self.sheet_container)  # Keep as tk.Frame for tksheet compatibility
+        # Keep as tk.Frame for tksheet compatibility
+        self.sheet_frame = tk.Frame(self.sheet_container)
         self.sheet_frame.pack(expand=True, fill="both", padx=2, pady=2)
         
         # Initialize components
@@ -103,9 +112,15 @@ class Application:
         account_label = ttk.Label(selector_container, text="Account:", style='SelectorLabel.TLabel')
         account_label.pack(side="left", padx=(20, 5))
         
-        self.account_selector = AccountSelector(selector_container, self.db_manager, self.update_table_with_account)
-        self.edit_mode_manager = EditModeManager(self.button_frame, self.cancel_edit_mode, self.save_edit_mode, self)
-        self.ledger_sheet = LedgerSheet(self.sheet_frame, self.db_manager, self.enter_edit_mode)
+        self.account_selector = AccountSelector(
+            selector_container, self.db_manager, self.update_table_with_account
+        )
+        self.edit_mode_manager = EditModeManager(
+            self.button_frame, self.cancel_edit_mode, self.save_edit_mode, self
+        )
+        self.ledger_sheet = LedgerSheet(
+            self.sheet_frame, self.db_manager, self.enter_edit_mode
+        )
         
         self.update_table_with_account(self.account_selector.initial_option)
         self.ledger_sheet.set_all_readonly(True)
@@ -156,19 +171,19 @@ class Application:
         else:  # Linux/X11
             return 'Liberation Sans'
     
-    def update_table_with_account(self, selected_option=None):
+    def update_table_with_account(self, _selected_option=None):
         """Update the ledger display when a different account is selected."""
         self.current_filter_type = "account"
         account_id = self.account_selector.get_selected_account_id()
         self.ledger_sheet.update_data(account_id, filter_type="account")
-    
-    def update_table_with_fund(self, selected_option=None):
+
+    def update_table_with_fund(self, _selected_option=None):
         """Update the ledger display when a different fund is selected."""
         self.current_filter_type = "fund"
         fund_id = self.fund_selector.get_selected_fund_id()
         self.ledger_sheet.update_data(fund_id, filter_type="fund")
-    
-    def enter_edit_mode(self, event=None):
+
+    def enter_edit_mode(self, _event=None):
         """Enter edit mode for the selected transaction."""
         if self.mode == "initial":
             self.selected_row = self.ledger_sheet.get_selected_row()
@@ -187,17 +202,25 @@ class Application:
                     filter_id = self.account_selector.get_selected_account_id()
                 else:
                     filter_id = self.fund_selector.get_selected_fund_id()
-                ledger_df = self.db_manager.fetch_ledger_data(filter_id, self.current_filter_type)
+                ledger_df = self.db_manager.fetch_ledger_data(
+                    filter_id, self.current_filter_type
+                )
                 
                 # Format the ledger data (without balance column)
-                formatted_ledger_df = self.ledger_sheet.format_decimal_columns(ledger_df, include_balance=False)
+                formatted_ledger_df = self.ledger_sheet.format_decimal_columns(
+                    ledger_df, include_balance=False
+                )
                 current_data_no_balance = formatted_ledger_df.values.tolist()
-                
+
                 # Fetch all splits for this transaction
-                transaction_df = self.db_manager.fetch_transaction_data(self.selected_tran_id)
-                
+                transaction_df = self.db_manager.fetch_transaction_data(
+                    self.selected_tran_id
+                )
+
                 # Format the transaction data
-                formatted_transaction_df = self.ledger_sheet.format_decimal_columns(transaction_df, include_balance=False)
+                formatted_transaction_df = self.ledger_sheet.format_decimal_columns(
+                    transaction_df, include_balance=False
+                )
                 transaction_data = formatted_transaction_df.values.tolist()
                 
                 # Combine data: before selected row + transaction data + after selected row
@@ -206,9 +229,11 @@ class Application:
                     print("Transaction data :", transaction_data)
                     print("Tail :", current_data_no_balance[self.selected_row + 1:])
 
-                new_data = (current_data_no_balance[:self.selected_row] + 
-                           transaction_data + 
-                           current_data_no_balance[self.selected_row + 1:])
+                new_data = (
+                    current_data_no_balance[:self.selected_row] +
+                    transaction_data +
+                    current_data_no_balance[self.selected_row + 1:]
+                )
                 
                 # Update headers without balance column
                 self.ledger_sheet.sheet.headers(list(formatted_transaction_df.columns))
@@ -237,10 +262,44 @@ class Application:
                 self.ledger_sheet.set_all_readonly(True)
                 
                 # Make the highlighted red rows editable
-                self.ledger_sheet.set_row_readonly(self.start_idx, self.end_idx, False)  # make transaction rows editable
-                
+                self.ledger_sheet.set_row_readonly(
+                    self.start_idx, self.end_idx, False
+                )
+
+                # Set up edit validation to synchronize user_date and description
+                self.ledger_sheet.sheet.edit_validation(self.after_cell_edit)
                 
                 self.edit_mode_manager.show_edit_buttons()
+    
+    def after_cell_edit(self, event):
+        """Handle cell edit events to sync user_date and description across editable rows."""
+        if self.mode == "edit" and self.start_idx <= event.row < self.end_idx:
+            # Get the edited value from the event
+            edited_value = event.value
+
+            # Check if user_date (column 2) or description (column 3) was edited
+            if event.column == 2:  # UserDate column
+                # Update user_date in all editable rows
+                for i in range(self.start_idx, self.end_idx):
+                    if i != event.row:  # Don't overwrite the cell being edited
+                        self.ledger_sheet.sheet.set_cell_data(i, 2, edited_value)
+                # Update stored user_date
+                self.selected_user_date = edited_value
+                if _DEBUG:
+                    print(f"Updated user_date in all editable rows to: {edited_value}")
+
+            elif event.column == 3:  # Description column
+                # Update description in all editable rows
+                for i in range(self.start_idx, self.end_idx):
+                    if i != event.row:  # Don't overwrite the cell being edited
+                        self.ledger_sheet.sheet.set_cell_data(i, 3, edited_value)
+                # Update stored description
+                self.selected_description = edited_value
+                if _DEBUG:
+                    print(f"Updated description in all editable rows to: {edited_value}")
+
+        # Return the edited value to allow the edit to proceed normally
+        return event.value
     
     def save_edit_mode(self):
         """Save the edited transaction data to the database."""
@@ -311,6 +370,9 @@ class Application:
             self.selected_description = None
             self.edit_mode_manager.hide_edit_buttons()
             self.ledger_sheet.set_all_readonly(True)
+            
+            # Clear edit validation
+            self.ledger_sheet.sheet.edit_validation(None)
     
     def add_split_row(self):
         """Add a new split row to the current transaction in edit mode after the last selected row."""
@@ -398,7 +460,7 @@ class Application:
                     print(f"Selected row {selected_row} is not in editable range ({self.start_idx}-{self.end_idx-1})")
                 return
             
-            # Check if this is the last remaining split (don't allow deletion of the last split)
+            # Check if this is the last remaining split
             if self.end_idx - self.start_idx <= 1:
                 if _DEBUG:
                     print("Cannot delete the last remaining split in a transaction")
@@ -432,4 +494,5 @@ class Application:
             self.ledger_sheet.set_row_readonly(self.start_idx, self.end_idx, False)
             
             if _DEBUG:
-                print(f"Deleted split row at index {selected_row}, new end_idx: {self.end_idx}")
+                print(f"Deleted split row at index {selected_row}, "
+                      f"new end_idx: {self.end_idx}")

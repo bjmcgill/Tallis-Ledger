@@ -123,15 +123,18 @@ pip install -r requirements.txt
 ### Edit Mode Workflow
 1. **Enter Edit Mode**: Click on any cell → stores transaction details from selected row
 2. **Display Splits**: All splits for transaction shown as red highlighted editable rows
-3. **Edit Operations**: 
+3. **Edit Validation**: Automatic synchronization of user_date and description across all splits
+4. **Edit Operations**: 
    - Modify amounts, fund choices, account choices in editable rows
+   - Edit user_date or description → automatically updates all splits in transaction
    - Add Split: Inserts new row after last selected position with current dropdown values
    - Delete Split: Removes selected editable row (prevents deletion of last split)
-4. **Save/Cancel**: Uses stored original transaction details for database operations
+5. **Save/Cancel**: Uses stored original transaction details for database operations
 
 ### Event Handling
 - Cell selection triggers edit mode entry and stores transaction metadata
 - Edit mode shows comprehensive button set: Cancel, Save Transaction, Add Split, Delete Split, Balance Split, Delete Transaction
+- **Edit validation synchronizes user_date and description**: When user edits date or description in any split, all other splits in the transaction automatically update to match
 - Application tracks selected row, transaction ID, user date, and description separately
 - Add Split intelligently positions new rows after last selected row
 - Delete Split validates selection and prevents deletion of last remaining split
@@ -206,6 +209,8 @@ def enter_edit_mode(self, event=None):
         self.ledger_sheet.set_all_readonly(True)
         self.ledger_sheet.set_row_readonly(start_idx, end_idx, False)
         self.ledger_sheet.setup_dropdowns(start_idx, end_idx)
+        # Set up edit validation for user_date and description synchronization
+        self.ledger_sheet.sheet.edit_validation(self.after_cell_edit)
 
 # Save edit mode - use stored transaction details for consistency
 def save_edit_mode(self):
@@ -252,6 +257,24 @@ def _collect_splits_data(self, current_data):
         account_id = int(account_choice.split(':')[0]) if account_choice else 0
     return splits_data
 
+# Edit validation - synchronize transaction metadata across splits
+def after_cell_edit(self, event):
+    if self.mode == "edit" and self.start_idx <= event.row < self.end_idx:
+        edited_value = event.value
+        if event.column == 2:  # UserDate column
+            # Update user_date in all editable rows except current
+            for i in range(self.start_idx, self.end_idx):
+                if i != event.row:
+                    self.ledger_sheet.sheet.set_cell_data(i, 2, edited_value)
+            self.selected_user_date = edited_value
+        elif event.column == 3:  # Description column
+            # Update description in all editable rows except current
+            for i in range(self.start_idx, self.end_idx):
+                if i != event.row:
+                    self.ledger_sheet.sheet.set_cell_data(i, 3, edited_value)
+            self.selected_description = edited_value
+    return event.value  # Return value to allow edit to proceed
+
 # Cancel edit mode - clear stored data and restore view
 def cancel_edit_mode(self):
     if self.mode == "edit":
@@ -259,6 +282,8 @@ def cancel_edit_mode(self):
         self.selected_tran_id = None
         self.selected_user_date = None
         self.selected_description = None
+        # Clear edit validation
+        self.ledger_sheet.sheet.edit_validation(None)
 ```
 
 ### Module Imports
