@@ -11,7 +11,7 @@ DROP TABLE IF EXISTS Account;
 CREATE TABLE Transactions (
     Id INTEGER PRIMARY KEY AUTOINCREMENT,
     UserDate DATE,
-    Description TEXT CHECK(length(Description) <= 40),
+    Description TEXT CHECK(length(Description) <= 100),
     Created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     Deleted BOOLEAN DEFAULT 0,
     Deleted_at DATETIME

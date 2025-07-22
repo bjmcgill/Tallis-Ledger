@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Application Overview
 
-Tallis Ledger is a modern Tkinter-based accounting application that provides a professional spreadsheet-like interface for managing financial transactions. The application uses SQLite for data persistence and the tksheet library for the interactive data grid with comprehensive edit mode functionality.
+Tallis Ledger is a comprehensive Tkinter-based accounting application that provides a professional spreadsheet-like interface for managing financial transactions. The application implements double-entry bookkeeping principles with modern UI components and robust data validation.
 
 ### Core Architecture
 
@@ -12,425 +12,327 @@ The application follows a modular architecture with clear separation of concerns
 
 **Module Structure:**
 - **`main.py`**: Application entry point
-- **`application.py`**: Main Application class coordinating all components with TTK styling
-- **`database.py`**: DatabaseManager class for all SQLite operations with REAL amount precision
-- **`ui_components.py`**: AccountSelector, FundSelector, and EditModeManager classes using TTK widgets
-- **`ledger_sheet.py`**: LedgerSheet class wrapping tksheet widget with decimal formatting
+- **`application.py`**: Main Application class with comprehensive mode management (initial, edit, add)
+- **`database.py`**: DatabaseManager class with flexible database selection and CRUD operations
+- **`ui_components.py`**: Professional UI components using TTK widgets with dynamic button management
+- **`ledger_sheet.py`**: LedgerSheet class with configurable column widths and tksheet integration
 
 **Key Classes:**
-- **DatabaseManager**: Handles all SQLite database operations with foreign key constraints
-- **AccountSelector**: Manages the account dropdown selection with "Id:Name" format
-- **FundSelector**: Manages the fund dropdown selection with "Id:Name" format  
-- **EditModeManager**: Controls edit mode UI with comprehensive button set (Cancel, Save, Add Split, Delete Split, Balance Split, Delete Transaction)
-- **LedgerSheet**: Wraps tksheet widget with decimal formatting and dropdown support
-- **Application**: Main controller with cross-platform window management and TTK styling
+- **DatabaseManager**: Handles SQLite operations with file selection dialog and performance indexes
+- **AccountSelector**: TTK combobox for account selection with "Id:Name" format
+- **FundSelector**: TTK combobox for fund selection with "Id:Name" format  
+- **EditModeManager**: Dynamic button management for different application modes
+- **LedgerSheet**: Advanced tksheet wrapper with decimal formatting and configurable column widths
+- **Application**: Central coordinator with three distinct modes and comprehensive transaction management
 
 ### Database Schema
 
-The application uses a double-entry accounting system with these key tables:
+The application implements a complete double-entry accounting system:
 
-- **Transactions**: Main transaction records with date, description, and posting status
-- **Split**: Individual accounting entries that implement double-entry bookkeeping
-- **Account**: Chart of accounts with Id, Name, and Type fields (assets, liabilities, income, expenses)
-- **Fund**: Fund accounting with Id, Name, and Type fields for tracking different fund types
+**Core Tables:**
+- **Transactions**: Main transaction records with soft delete capability
+  - `Id` (PRIMARY KEY), `UserDate`, `Description` (100 chars max), `Created_at`, `Deleted`, `Deleted_at`
+- **Split**: Individual accounting entries implementing double-entry bookkeeping
+  - `Id` (PRIMARY KEY), `Tran_id` (FK), `Amount` (REAL), `FundId` (FK), `AccountId` (FK)
+- **Account**: Chart of accounts with configurable types
+  - `Id` (PRIMARY KEY), `Name` (50 chars), `Type` (25 chars)
+- **Fund**: Fund accounting for different fund types
+  - `Id` (PRIMARY KEY), `Name` (50 chars), `Type` (25 chars)
+
+**Performance Features:**
+- Comprehensive indexes on all major columns for optimal query performance
+- Foreign key constraints enabled for data integrity
+- Soft delete pattern preserves audit trails
+- REAL data type for precise decimal calculations
 
 **Default Records:**
-- Account table includes a default "No Account" entry (ID=0, Type="Default") for unassigned transactions
-- Fund table includes a default "No Fund" entry (ID=0, Type="Default") for unassigned funds
+- Default "No Account" (ID=0) and "No Fund" (ID=0) entries for system flexibility
 
-**Performance Indexes:**
-- `idx_split_tran_id` on Split.Tran_id for efficient transaction joins
-- `idx_transactions_userdate` on Transactions.UserDate for date-based queries
+## Application Modes
 
-## Common Development Commands
+### Initial Mode (View Mode)
+- **Display**: All transactions with calculated Balance column (cumulative sum)
+- **Interaction**: Read-only display, single-click row selection enters edit mode
+- **UI Elements**: Account/Fund selectors enabled, "Add Transaction" button visible
+- **Database Selection**: Shows file dialog when `_DEBUG=False`, uses default when `_DEBUG=True`
 
-### Running the Application
+### Edit Mode (Transaction Editing)
+- **Trigger**: Single-click on any row in initial mode
+- **Display**: Transaction splits highlighted in red, balance column removed
+- **Features**: 
+  - Edit transaction date, description, amounts, fund/account assignments
+  - Automatic synchronization of date/description across all splits
+  - Input validation for dates and amounts
+  - Readonly protection for ID columns (SplitId, TransactionsId)
+- **Buttons**: Cancel, Save Transaction, Add Split, Delete Split, Balance Split, Delete Transaction
+- **Validation**: Transaction must balance (sum to zero) before saving
+
+### Add Mode (New Transaction Creation)
+- **Trigger**: Click "Add Transaction" button in initial mode
+- **Display**: Two new editable rows appended to bottom, balance column removed
+- **Features**: 
+  - Default current date and empty description
+  - Uses current fund/account selector values as defaults
+  - Same editing capabilities as edit mode
+  - Focus automatically set to Description column
+- **Buttons**: Cancel, Save Transaction, Add Split, Delete Split, Balance Split
+- **Validation**: Same balance requirements as edit mode
+
+## Key Features
+
+### Database Management
+```python
+# Database initialization with file selection
+def _initialize_database(self):
+    if _DEBUG:
+        return DatabaseManager("your_ledger.db")  # Auto-load for development
+    else:
+        # Show file dialog for production use
+        db_path = filedialog.askopenfilename(
+            title="Select Database File",
+            filetypes=[("SQLite Database", "*.db"), ("SQLite Database", "*.sqlite")]
+        )
+        return DatabaseManager(db_path)
+```
+
+### Column Width Configuration
+```python
+# Easily customizable column widths
+def set_column_widths(self):
+    column_widths = {
+        'SplitId': 50,           # Narrow ID columns
+        'TransactionsId': 50,
+        'UserDate': 150,
+        'Description': 800,      # Wide for readability
+        'FundChoice': 150,
+        'AccountChoice': 150,
+        'Amount': 150,
+        'Balance': 150
+    }
+    # Applied automatically when headers are updated
+```
+
+### Transaction Management
+```python
+# Complete transaction lifecycle
+def enter_edit_mode(self, event=None):
+    # Store transaction metadata on entry
+    self.selected_tran_id = selected_row_data[1]
+    self.selected_user_date = selected_row_data[2]
+    self.selected_description = selected_row_data[3]
+    
+    # Set focus to appropriate column
+    self.ledger_sheet.sheet.set_currently_selected(self.start_idx, 4)  # FundChoice
+
+def save_edit_mode(self):
+    # Validate balance before saving
+    if not self._validate_transaction_balance(current_data):
+        messagebox.showwarning("Transaction Not Balanced", "...")
+        return
+    
+    # Use stored metadata for consistency
+    success = self.db_manager.save_transaction(
+        self.selected_tran_id, self.selected_user_date, 
+        self.selected_description, splits_data
+    )
+```
+
+### Input Validation and Synchronization
+```python
+def after_cell_edit(self, event):
+    """Real-time validation and synchronization"""
+    if event.column == 2:  # UserDate
+        if not self._is_valid_date(edited_value):
+            return old_value  # Reject invalid dates
+        # Sync date across all transaction splits
+        for i in range(self.start_idx, self.end_idx):
+            if i != event.row:
+                self.sheet.set_cell_data(i, 2, edited_value)
+    elif event.column == 6:  # Amount
+        if not self._is_valid_amount(edited_value):
+            return old_value  # Reject non-numeric amounts
+```
+
+### Smart Split Management
+```python
+def add_split_row(self):
+    """Intelligent positioning and default values"""
+    # Insert after last selected row or at appropriate position
+    selected_cells = self.ledger_sheet.sheet.get_currently_selected()
+    insert_position = self._calculate_insert_position(selected_cells)
+    
+    # Use current dropdown selections as defaults
+    new_row = [
+        0, self.selected_tran_id, self.selected_user_date,
+        self.selected_description, current_fund_selection,
+        current_account_selection, "0.00"
+    ]
+
+def balance_split_row(self):
+    """Ensure double-entry bookkeeping compliance"""
+    total_other_amounts = sum(amounts_except_selected_row)
+    balancing_amount = -total_other_amounts
+    self.sheet.set_cell_data(selected_row, 6, f"{balancing_amount:.2f}")
+```
+
+### Soft Delete with Audit Trail
+```python
+def delete_transaction(self):
+    """Safe transaction deletion with confirmation"""
+    result = messagebox.askyesno(
+        "Delete Transaction",
+        f"Delete transaction {self.selected_tran_id}?\n"
+        f"Date: {self.selected_user_date}\n"
+        f"Description: {self.selected_description}"
+    )
+    if result:
+        self.db_manager.soft_delete_transaction(self.selected_tran_id)
+
+def soft_delete_transaction(self, tran_id):
+    """Preserve audit trail - only mark as deleted"""
+    self.cursor.execute("""
+        UPDATE Transactions 
+        SET Deleted = 1, Deleted_at = CURRENT_TIMESTAMP 
+        WHERE Id = ? AND Deleted = 0
+    """, (tran_id,))
+    # Split records remain unchanged for audit purposes
+```
+
+## Development Commands
+
+### Application Startup
 ```bash
+# Development mode (auto-loads your_ledger.db)
+# Set _DEBUG = True in application.py
+python main.py
+
+# Production mode (shows database file dialog)
+# Set _DEBUG = False in application.py  
 python main.py
 ```
 
-### Setting Up the Database
+### Database Setup
 ```bash
-# Create tables
+# Create tables with performance indexes
 sqlite3 your_ledger.db < createtables.sql
 
-# Insert sample data
+# Add sample data
 sqlite3 your_ledger.db < insertdata.sql
 ```
 
-### Installing Dependencies
+### Dependencies
 ```bash
-pip install -r requirements.txt
+pip install tksheet pandas  # Core dependencies
+# tkinter and sqlite3 are built-in to Python
 ```
 
-## Key Dependencies
+## Code Patterns and Best Practices
 
-- **tksheet**: Spreadsheet widget for data display and editing
-- **pandas**: Data manipulation and SQL query results
-- **sqlite3**: Database operations (built-in)
-- **tkinter**: GUI framework (built-in)
-
-## Working with the Code
-
-### Modular Structure
-- Each module has a single responsibility and clear interfaces
-- Import modules using `from module_name import ClassName`
-- The Application class in `application.py` coordinates all components
-- Database operations are isolated in `database.py` for easy testing
-
-### Database Operations
-- All database interactions go through the `DatabaseManager` class in `database.py`
-- The application maintains foreign key constraints
-- Use parameterized queries to prevent SQL injection
-- The database file is `your_ledger.db` by default
-
-### UI Components
-- UI widgets are organized in `ui_components.py` and `ledger_sheet.py`
-- The main data grid uses tksheet - refer to `tksheet_reference.md` for detailed API
-- The application has two modes: "initial" (read-only) and "edit" (editable)
-- Edit mode is triggered by clicking on a cell and shows action buttons
-- The account selector filters the ledger display by account
-- All columns from database queries are displayed dynamically (no hardcoded column filtering)
-
-### Display Modes
-**Initial Mode:**
-- Shows all transaction data with a calculated Balance column (cumulative sum of amounts)
-- All rows are readonly and highlighted in white
-- Account dropdown selector is enabled
-
-**Edit Mode:**
-- Removes the Balance column to focus on editable data
-- Selected transaction splits are highlighted in red and made editable
-- Account dropdown is disabled during editing
-- AccountChoice column features dropdown selection for account assignment
-- FundChoice column features dropdown selection for fund assignment
-- Both dropdowns are initialized with current values and ordered by ID
-- Save and Cancel buttons are available for transaction management
-- All other rows remain readonly
-
-### Data Flow
-1. User selects an account or fund from the dropdown selectors
-2. `fetch_ledger_data()` retrieves transactions with formatted choice fields ("Id:Name")
-3. Data is displayed in the tksheet grid with decimal formatting and Balance column
-4. User clicks on any cell to enter edit mode for that transaction
-5. System stores original transaction details (tran_id, user_date, description) from selected row
-6. All splits for the transaction are fetched and displayed as editable rows
-7. Edit mode removes Balance column and highlights transaction splits in red
-8. User can add/delete splits, modify amounts, and change account/fund assignments
-9. Save preserves stored original transaction details while updating split data
-10. Cancel/save completion restores Balance column and normal view
-
-### Edit Mode Workflow
-1. **Enter Edit Mode**: Click on any cell → stores transaction details from selected row
-2. **Display Splits**: All splits for transaction shown as red highlighted editable rows
-3. **Edit Validation**: Automatic synchronization and input validation
-   - User_date and description sync across all splits
-   - Date format validation (supports multiple formats: YYYY-MM-DD, MM/DD/YYYY, etc.)
-   - Amount validation (must be valid numbers, rejects invalid input)
-4. **Edit Operations**: 
-   - Modify amounts, fund choices, account choices in editable rows
-   - Edit user_date or description → automatically updates all splits in transaction
-   - Add Split: Inserts new row after last selected position with current dropdown values
-   - Delete Split: Removes selected editable row (prevents deletion of last split)
-   - Balance Split: Calculates and sets amount for selected row to make transaction sum to zero
-   - Delete Transaction: Soft deletes entire transaction with confirmation dialog
-5. **Save/Cancel**: 
-   - Save validates transaction balance (must sum to zero) before database operations
-   - Uses stored original transaction details for consistency
-   - Shows warning message if transaction is unbalanced, prevents saving
-
-### Event Handling
-- Cell selection triggers edit mode entry and stores transaction metadata
-- Edit mode shows comprehensive button set: Cancel, Save Transaction, Add Split, Delete Split, Balance Split, Delete Transaction
-- **Edit validation with input checking**: Date and amount validation prevents invalid data entry
-- **Automatic synchronization**: User_date and description sync across all splits when edited
-- **Format support**: Accepts multiple date formats (YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY, etc.)
-- Application tracks selected row, transaction ID, user date, and description separately
-- Add Split intelligently positions new rows after last selected row
-- Delete Split validates selection and prevents deletion of last remaining split
-- Balance Split ensures double-entry bookkeeping by making transaction amounts sum to zero
-- Save Transaction validates balance before saving, shows warning if unbalanced
-- Delete Transaction performs soft delete with confirmation, preserves audit trail
-- Readonly spans prevent editing of non-transaction rows
-- Account and fund dropdowns use "Id:Name" format with no spaces
-- Dropdowns are initialized with current database values ordered by ID
-- Red highlighting with white text indicates editable transaction splits
-- Save uses stored transaction details for consistency regardless of current row changes
-- Cancel restores original view with balance calculations
-
-## Code Patterns
-
-### Adding New Database Queries
+### Mode-Aware Development
 ```python
-# In database.py - DatabaseManager class
-def fetch_new_data(self, param):
-    query = """
-        SELECT column1, column2
-        FROM table_name
-        WHERE condition = ?
-    """
-    return pd.read_sql_query(query, self.conn, params=[param])
-```
-
-### Working with tksheet
-```python
-# In ledger_sheet.py - LedgerSheet class
-# Update sheet data with dynamic headers and formatted amounts
-def update_data(self, filter_id, filter_type='account', include_balance=True):
-    full_df = self.db_manager.fetch_ledger_data(filter_id, filter_type)
-    if include_balance:
-        full_df['Balance'] = full_df['Amount'].cumsum()
-    
-    # Format Amount and Balance columns to 2 decimal places
-    formatted_data = full_df.copy()
-    formatted_data['Amount'] = formatted_data['Amount'].apply(lambda x: f"{float(x):.2f}")
-    if include_balance:
-        formatted_data['Balance'] = formatted_data['Balance'].apply(lambda x: f"{float(x):.2f}")
-    
-    self.sheet.headers(list(formatted_data.columns))
-    self.sheet.set_sheet_data(formatted_data.values.tolist())
-
-# Setup dropdowns for editable rows
-def setup_dropdowns(self, start_row, end_row):
-    self.setup_account_dropdown(start_row, end_row)
-    self.setup_fund_dropdown(start_row, end_row)
-
-def setup_account_dropdown(self, start_row, end_row):
-    account_options = self.db_manager.fetch_chart_options()
-    dropdown_values = [f"{row['Id']}:{row['Name']}" for _, row in account_options.iterrows()]
-    headers = self.sheet.headers()
-    account_col_idx = headers.index('AccountChoice')
-    for row in range(start_row, end_row):
-        current_value = self.sheet[row, account_col_idx].data
-        self.sheet[row, account_col_idx].dropdown(
-            values=dropdown_values,
-            set_value=current_value
-        )
-```
-
-### Managing Edit Mode
-```python
-# In application.py - Application class
-# Enter edit mode - fetch transaction data and setup editing
-def enter_edit_mode(self, event=None):
-    if self.mode == "initial":
-        self.selected_tran_id = current_data[self.selected_row][1]
-        # Get data without balance column for edit mode
-        ledger_df = self.db_manager.fetch_ledger_data(account_id)
-        transaction_df = self.db_manager.fetch_transaction_data(self.selected_tran_id)
-        # Combine data and setup edit environment
-        self.ledger_sheet.set_all_readonly(True)
-        self.ledger_sheet.set_row_readonly(start_idx, end_idx, False)
-        self.ledger_sheet.setup_dropdowns(start_idx, end_idx)
-        # Set up edit validation for user_date and description synchronization
-        self.ledger_sheet.sheet.edit_validation(self.after_cell_edit)
-
-# Save edit mode - validate balance and use stored transaction details
-def save_edit_mode(self):
+# Always check current mode for appropriate behavior
+if self.mode == "initial":
+    # Handle view-only interactions
+elif self.mode in ["edit", "add"]:
+    # Handle editing operations
     if self.mode == "edit":
-        # Validate that transaction amounts sum to zero
-        if not self._validate_transaction_balance(current_data):
-            messagebox.showwarning(
-                "Transaction Not Balanced",
-                "The sum of all amounts in the current transaction should equal zero. "
-                "Please use the balance split button to achieve this."
-            )
-            return
-        # Use stored original transaction details, not current row data
-        user_date = self.selected_user_date
-        description = self.selected_description
-        splits_data = self._collect_splits_data(current_data)
-        success = self.db_manager.save_transaction(
-            self.selected_tran_id, user_date, description, splits_data
-        )
+        # Edit-specific logic (existing transaction)
+    else:  # add mode
+        # Add-specific logic (new transaction)
+```
 
-# Validate transaction balance - ensure double-entry bookkeeping compliance
+### Database Query Patterns
+```python
+# Parameterized queries with proper formatting
+def fetch_ledger_data(self, filter_id, filter_type='account'):
+    query = f"""
+        SELECT Split.Id AS SplitId, Transactions.Id AS TransactionsId,
+               Transactions.UserDate, Transactions.Description,
+               Fund.Id || ':' || Fund.Name AS FundChoice,
+               Account.Id || ':' || Account.Name AS AccountChoice,
+               Split.Amount
+        FROM Split
+        JOIN Transactions ON Split.Tran_id = Transactions.Id
+        LEFT JOIN Fund ON Split.FundId = Fund.Id
+        LEFT JOIN Account ON Split.AccountId = Account.Id
+        WHERE Transactions.Deleted = 0 AND {filter_clause}
+        ORDER BY Transactions.UserDate, Transactions.Id, Split.Id
+    """
+    return pd.read_sql_query(query, self.conn, params=[filter_id])
+```
+
+### UI Component Management
+```python
+# Dynamic button management for different modes
+def hide_edit_buttons(self):
+    """Comprehensive cleanup of all UI elements"""
+    for button in self.buttons:
+        button.destroy()
+    self.buttons = []
+    # Also clear any orphaned widgets
+    for widget in self.button_frame.winfo_children():
+        widget.destroy()
+
+def show_add_transaction_button(self):
+    """Show single button for initial mode"""
+    button_container = ttk.Frame(self.button_frame)
+    self.add_transaction_button = ttk.Button(
+        button_container, text="Add Transaction",
+        command=self._on_add_transaction, style="Accent.TButton"
+    )
+```
+
+### Error Handling and Validation
+```python
+# Robust error handling with user feedback
 def _validate_transaction_balance(self, current_data):
     total_amount = 0.0
     for i in range(self.start_idx, self.end_idx):
         try:
-            amount = float(current_data[i][6])  # Amount column
+            amount = float(current_data[i][6])
             total_amount += amount
         except (ValueError, IndexError):
-            continue  # Treat invalid amounts as 0 for validation
-    # Check if sum is close to zero (accounting for floating point precision)
-    return abs(total_amount) < 0.01
+            continue  # Skip invalid amounts
+    return abs(total_amount) < 0.01  # Floating point precision tolerance
 
-# Delete transaction - soft delete with confirmation
-def delete_transaction(self):
-    if self.mode == "edit" and self.selected_tran_id:
-        # Ask for confirmation with transaction details
-        result = messagebox.askyesno(
-            "Delete Transaction",
-            f"Are you sure you want to delete transaction {self.selected_tran_id}?\n\n"
-            f"Date: {self.selected_user_date}\n"
-            f"Description: {self.selected_description}\n\n"
-            f"This action cannot be undone."
-        )
-        if result:
-            # Perform soft delete in database (only affects Transactions table)
-            success = self.db_manager.soft_delete_transaction(self.selected_tran_id)
-            if success:
-                self.cancel_edit_mode()  # Exit edit mode
-                self.update_table_with_account()  # Refresh view
-                messagebox.showinfo("Transaction Deleted", 
-                                  f"Transaction {self.selected_tran_id} has been successfully deleted.")
-
-# Database soft delete - preserves audit trail
-def soft_delete_transaction(self, tran_id):
-    try:
-        # Update only Transactions table, leave Split table unchanged
-        self.cursor.execute("""
-            UPDATE Transactions 
-            SET Deleted = 1, Deleted_at = CURRENT_TIMESTAMP 
-            WHERE Id = ? AND Deleted = 0
-        """, (tran_id,))
-        return self.cursor.rowcount > 0  # True if row was updated
-    except Exception as e:
-        self.conn.rollback()
-        return False
-
-# Add split - insert new row after last selected position
-def add_split_row(self):
-    if self.mode == "edit":
-        selected_cells = self.ledger_sheet.sheet.get_currently_selected()
-        last_selected_row = selected_cells[0] if selected_cells else self.end_idx - 1
-        # Smart positioning: after selected row or at start/end of editable range
-        current_fund_selection = self.fund_selector.selected_fund.get()
-        current_account_selection = self.account_selector.selected_account.get()
-        # Use stored transaction details for new row
-        new_row = [0, self.selected_tran_id, self.selected_user_date, 
-                  self.selected_description, current_fund_selection, 
-                  current_account_selection, "0.00"]
-
-# Delete split - remove selected row with validation
-def delete_split_row(self):
-    if self.mode == "edit":
-        selected_cells = self.ledger_sheet.sheet.get_currently_selected()
-        if self.end_idx - self.start_idx <= 1:  # Prevent deletion of last split
-            return
-        # Validate selection is within editable range and remove row
-
-# Balance split - ensure transaction sums to zero
-def balance_split_row(self):
-    if self.mode == "edit":
-        selected_cells = self.ledger_sheet.sheet.get_currently_selected()
-        selected_row = selected_cells[0]
-        # Validate selection is within editable range
-        if self.start_idx <= selected_row < self.end_idx:
-            # Calculate sum of all other amounts in transaction
-            total_other_amounts = 0.0
-            for i in range(self.start_idx, self.end_idx):
-                if i != selected_row:
-                    amount = float(current_data[i][6])  # Amount column
-                    total_other_amounts += amount
-            # Set balancing amount (negative of sum) to make total zero
-            balancing_amount = -total_other_amounts
-            formatted_amount = f"{balancing_amount:.2f}"
-            self.ledger_sheet.sheet.set_cell_data(selected_row, 6, formatted_amount)
-
-# Collect splits data - convert formatted amounts back to float
-def _collect_splits_data(self, current_data):
-    splits_data = []
-    for i in range(self.start_idx, self.end_idx):
-        row = current_data[i]
-        amount = float(row[6])  # Amount column - convert formatted string to float
-        fund_choice = row[4]  # FundChoice column (format: "Id:Name")
-        account_choice = row[5]  # AccountChoice column (format: "Id:Name")
-        # Extract IDs from choice strings: split(':')[0]
-        fund_id = int(fund_choice.split(':')[0]) if fund_choice else 0
-        account_id = int(account_choice.split(':')[0]) if account_choice else 0
-    return splits_data
-
-# Edit validation - input validation and synchronization
-def after_cell_edit(self, event):
-    if self.mode == "edit" and self.start_idx <= event.row < self.end_idx:
-        edited_value = event.value
-        current_data = self.ledger_sheet.get_current_data()
-        old_value = current_data[event.row][event.column]
-        
-        if event.column == 2:  # UserDate column
-            # Validate date format before accepting
-            if not self._is_valid_date(edited_value):
-                return old_value  # Reject invalid date, keep old value
-            # Update user_date in all editable rows except current
-            for i in range(self.start_idx, self.end_idx):
-                if i != event.row:
-                    self.ledger_sheet.sheet.set_cell_data(i, 2, edited_value)
-            self.selected_user_date = edited_value
-        elif event.column == 3:  # Description column
-            # Update description in all editable rows except current
-            for i in range(self.start_idx, self.end_idx):
-                if i != event.row:
-                    self.ledger_sheet.sheet.set_cell_data(i, 3, edited_value)
-            self.selected_description = edited_value
-        elif event.column == 6:  # Amount column
-            # Validate amount is a valid number
-            if not self._is_valid_amount(edited_value):
-                return old_value  # Reject invalid amount, keep old value
-    return event.value  # Return validated value to allow edit
-
-# Date validation - supports multiple common formats
+# Multi-format date validation
 def _is_valid_date(self, date_string):
-    date_formats = ["%Y-%m-%d", "%Y/%m/%d", "%m/%d/%Y", "%m-%d-%Y", "%d/%m/%Y", "%d-%m-%Y"]
-    for date_format in date_formats:
+    formats = ["%Y-%m-%d", "%Y/%m/%d", "%m/%d/%Y", "%m-%d-%Y", "%d/%m/%Y", "%d-%m-%Y"]
+    for fmt in formats:
         try:
-            datetime.strptime(date_string.strip(), date_format)
+            datetime.strptime(date_string.strip(), fmt)
             return True
         except ValueError:
             continue
     return False
-
-# Amount validation - ensures numeric input
-def _is_valid_amount(self, amount_string):
-    if not amount_string:  # Empty string allowed
-        return True
-    try:
-        float(amount_string)
-        return True
-    except (ValueError, TypeError):
-        return False
-
-# Cancel edit mode - clear stored data and restore view
-def cancel_edit_mode(self):
-    if self.mode == "edit":
-        self.mode = "initial"
-        self.selected_tran_id = None
-        self.selected_user_date = None
-        self.selected_description = None
-        # Clear edit validation
-        self.ledger_sheet.sheet.edit_validation(None)
 ```
 
-### Module Imports
-```python
-# Import specific classes from modules
-from database import DatabaseManager
-from ui_components import AccountSelector, FundSelector, EditModeManager
-from ledger_sheet import LedgerSheet
-```
+## Important Implementation Notes
 
-## Important Notes
+### Data Integrity
+- **Double-Entry Bookkeeping**: All transactions must balance (sum to zero)
+- **Foreign Key Constraints**: Enabled for referential integrity
+- **Soft Delete Pattern**: Preserves audit trails for deleted transactions
+- **Input Validation**: Real-time validation for dates and amounts
+- **Transaction Atomicity**: Database transactions ensure consistency
 
-### Database and Schema
-- The application uses REAL (float) amounts for financial calculations with 2 decimal place precision
-- All monetary amounts are stored as floating point numbers in the Split.Amount column
-- Foreign key constraints are enabled in SQLite
-- Double-entry bookkeeping is enforced with transaction splits that sum to zero
-- Account and Fund tables use Type fields (25 characters) for categorization
-- Default "No Account" and "No Fund" entries (ID=0) provide fallback options
-- Database indexes improve performance for common queries
+### Performance Optimization
+- **Comprehensive Indexes**: All major columns indexed for query performance
+- **Efficient Data Loading**: Fetch only necessary columns with proper joins
+- **Smart UI Updates**: Minimal redraws and targeted cell updates
+- **Configurable Column Widths**: Optimized display without unnecessary scrolling
 
-### User Interface
-- The UI prevents editing multiple rows simultaneously except for transaction splits
-- The Balance column is calculated dynamically and not stored in the database
-- Amount and Balance columns are automatically formatted to 2 decimal places for display
-- Account and fund dropdown functionality is applied dynamically to editable rows
-- All database columns are displayed automatically without hardcoded filtering
-- Dropdowns are ordered by ID and initialized with current values
+### User Experience
+- **Single-Click Interaction**: Immediate mode transitions without double-clicking
+- **Smart Focus Management**: Appropriate column focus for different modes
+- **Visual Feedback**: Color-coded rows (white=readonly, red=editable)
+- **Input Validation**: Immediate feedback for invalid data entry
+- **Confirmation Dialogs**: Safety checks for destructive operations
 
-### Data Management
-- Save operations perform complete transaction replacement (delete + insert)
-- Database transactions ensure atomicity of save operations
-- Cancel operations discard changes and restore original view
-- The application includes sample data for testing and development
+### Cross-Platform Compatibility
+- **TTK Styling**: Professional appearance across operating systems
+- **Platform-Specific Fonts**: Automatic font selection (Segoe UI/SF Pro/Liberation Sans)
+- **Window Management**: Proper maximization and sizing for different platforms
+- **File Dialog Integration**: Native file selection dialogs
+
+This documentation reflects the current comprehensive state of the Tallis Ledger application with its complete transaction management system, flexible database handling, and professional user interface.
