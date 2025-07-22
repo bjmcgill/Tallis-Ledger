@@ -171,6 +171,39 @@ class DatabaseManager:
             print(f"Error soft deleting transaction {tran_id}: {e}")
             return False
     
+    def add_new_transaction(self, user_date, description, splits_data):
+        """
+        Add a new transaction and its splits to the database.
+        Does not delete any existing data.
+        
+        Args:
+            user_date: Transaction date
+            description: Transaction description
+            splits_data: List of dicts with keys: amount, fund_id, account_id
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            # Begin transaction
+            self.conn.execute("BEGIN")
+            
+            # Insert new transaction
+            new_tran_id = self._insert_transaction(user_date, description)
+            
+            # Insert new splits
+            self._insert_splits(new_tran_id, splits_data)
+            
+            # Commit the transaction
+            self.conn.commit()
+            return True
+            
+        except Exception as e:
+            # Rollback on error
+            self.conn.rollback()
+            print(f"Error adding new transaction: {e}")
+            return False
+    
     # ========== CONNECTION MANAGEMENT ==========
     
     def close(self):

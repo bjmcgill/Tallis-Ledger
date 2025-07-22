@@ -44,8 +44,18 @@ CREATE TABLE Split (
 );
 
 -- Create indexes for performance
-CREATE INDEX idx_split_tran_id ON Split(Tran_id);
+-- Transactions table indexes (excluding primary key Id)
 CREATE INDEX idx_transactions_userdate ON Transactions(UserDate);
+CREATE INDEX idx_transactions_description ON Transactions(Description);
+CREATE INDEX idx_transactions_created_at ON Transactions(Created_at);
+CREATE INDEX idx_transactions_deleted ON Transactions(Deleted);
+CREATE INDEX idx_transactions_deleted_at ON Transactions(Deleted_at);
+
+-- Split table indexes (excluding primary key Id)
+CREATE INDEX idx_split_tran_id ON Split(Tran_id);
+CREATE INDEX idx_split_amount ON Split(Amount);
+CREATE INDEX idx_split_fund_id ON Split(FundId);
+CREATE INDEX idx_split_account_id ON Split(AccountId);
 
 -- Insert default "No Fund" entry
 INSERT INTO Fund (Id, Name, Type) VALUES

@@ -123,7 +123,10 @@ pip install -r requirements.txt
 ### Edit Mode Workflow
 1. **Enter Edit Mode**: Click on any cell → stores transaction details from selected row
 2. **Display Splits**: All splits for transaction shown as red highlighted editable rows
-3. **Edit Validation**: Automatic synchronization of user_date and description across all splits
+3. **Edit Validation**: Automatic synchronization and input validation
+   - User_date and description sync across all splits
+   - Date format validation (supports multiple formats: YYYY-MM-DD, MM/DD/YYYY, etc.)
+   - Amount validation (must be valid numbers, rejects invalid input)
 4. **Edit Operations**: 
    - Modify amounts, fund choices, account choices in editable rows
    - Edit user_date or description → automatically updates all splits in transaction
@@ -139,7 +142,9 @@ pip install -r requirements.txt
 ### Event Handling
 - Cell selection triggers edit mode entry and stores transaction metadata
 - Edit mode shows comprehensive button set: Cancel, Save Transaction, Add Split, Delete Split, Balance Split, Delete Transaction
-- **Edit validation synchronizes user_date and description**: When user edits date or description in any split, all other splits in the transaction automatically update to match
+- **Edit validation with input checking**: Date and amount validation prevents invalid data entry
+- **Automatic synchronization**: User_date and description sync across all splits when edited
+- **Format support**: Accepts multiple date formats (YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY, etc.)
 - Application tracks selected row, transaction ID, user date, and description separately
 - Add Split intelligently positions new rows after last selected row
 - Delete Split validates selection and prevents deletion of last remaining split
@@ -337,11 +342,17 @@ def _collect_splits_data(self, current_data):
         account_id = int(account_choice.split(':')[0]) if account_choice else 0
     return splits_data
 
-# Edit validation - synchronize transaction metadata across splits
+# Edit validation - input validation and synchronization
 def after_cell_edit(self, event):
     if self.mode == "edit" and self.start_idx <= event.row < self.end_idx:
         edited_value = event.value
+        current_data = self.ledger_sheet.get_current_data()
+        old_value = current_data[event.row][event.column]
+        
         if event.column == 2:  # UserDate column
+            # Validate date format before accepting
+            if not self._is_valid_date(edited_value):
+                return old_value  # Reject invalid date, keep old value
             # Update user_date in all editable rows except current
             for i in range(self.start_idx, self.end_idx):
                 if i != event.row:
@@ -353,7 +364,32 @@ def after_cell_edit(self, event):
                 if i != event.row:
                     self.ledger_sheet.sheet.set_cell_data(i, 3, edited_value)
             self.selected_description = edited_value
-    return event.value  # Return value to allow edit to proceed
+        elif event.column == 6:  # Amount column
+            # Validate amount is a valid number
+            if not self._is_valid_amount(edited_value):
+                return old_value  # Reject invalid amount, keep old value
+    return event.value  # Return validated value to allow edit
+
+# Date validation - supports multiple common formats
+def _is_valid_date(self, date_string):
+    date_formats = ["%Y-%m-%d", "%Y/%m/%d", "%m/%d/%Y", "%m-%d-%Y", "%d/%m/%Y", "%d-%m-%Y"]
+    for date_format in date_formats:
+        try:
+            datetime.strptime(date_string.strip(), date_format)
+            return True
+        except ValueError:
+            continue
+    return False
+
+# Amount validation - ensures numeric input
+def _is_valid_amount(self, amount_string):
+    if not amount_string:  # Empty string allowed
+        return True
+    try:
+        float(amount_string)
+        return True
+    except (ValueError, TypeError):
+        return False
 
 # Cancel edit mode - clear stored data and restore view
 def cancel_edit_mode(self):

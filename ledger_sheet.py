@@ -43,6 +43,7 @@ class LedgerSheet:
         
         self.sheet.headers(list(formatted_data.columns))
         self.sheet.set_sheet_data(formatted_data.values.tolist())
+        self.set_column_widths()
     
     def highlight_row(self, row_index, bg="red", fg="white"):
         """Highlight a specific row with the given colors."""
@@ -50,7 +51,11 @@ class LedgerSheet:
     
     def get_selected_row(self):
         """Get the currently selected row index."""
-        return self.sheet.get_currently_selected()[0]
+        selected = self.sheet.get_currently_selected()
+        if selected:
+            return selected[0]
+        else:
+            return None
     
     def get_current_data(self):
         """Get all current sheet data."""
@@ -112,3 +117,22 @@ class LedgerSheet:
         """Set up both account and fund dropdowns for the specified row range."""
         self.setup_account_dropdown(start_row, end_row)
         self.setup_fund_dropdown(start_row, end_row)
+    
+    def set_column_widths(self):
+        """Set column widths for the sheet. Modify this method to change column widths."""
+        column_widths = {
+            'SplitId': 50,
+            'TransactionsId': 50,
+            'UserDate': 150,
+            'Description': 800,
+            'FundChoice': 150,
+            'AccountChoice': 150,
+            'Amount': 150,
+            'Balance': 150
+        }
+        
+        headers = self.sheet.headers()
+        if headers:
+            for i, header in enumerate(headers):
+                if header in column_widths:
+                    self.sheet.column_width(column=i, width=column_widths[header])

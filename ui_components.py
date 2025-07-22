@@ -130,9 +130,81 @@ class EditModeManager:
     
     def hide_edit_buttons(self):
         """Hide the edit mode action buttons."""
-        for button in self.buttons:
-            button.destroy()
+        print(f"[DEBUG] hide_edit_buttons called, {len(self.buttons)} buttons to destroy")
+        
+        # Destroy all existing buttons
+        for i, button in enumerate(self.buttons):
+            try:
+                print(f"[DEBUG] Destroying button {i}: {button}")
+                button.destroy()
+            except Exception as e:
+                print(f"[DEBUG] Error destroying button {i}: {e}")
         self.buttons = []
+        
+        # Also clear any remaining widgets in the button frame
+        children = self.button_frame.winfo_children()
+        print(f"[DEBUG] Found {len(children)} children in button frame")
+        for widget in children:
+            try:
+                print(f"[DEBUG] Destroying child widget: {widget}")
+                widget.destroy()
+            except Exception as e:
+                print(f"[DEBUG] Error destroying child widget: {e}")
+        
+        print("[DEBUG] hide_edit_buttons completed")
+    
+    def show_add_transaction_button(self):
+        """Show the Add Transaction button for initial mode."""
+        print("[DEBUG] show_add_transaction_button called")
+        
+        # Create a centered container for the button
+        button_container = ttk.Frame(self.button_frame)
+        button_container.pack(expand=True)
+        
+        self.add_transaction_button = ttk.Button(
+            button_container, 
+            text="Add Transaction", 
+            command=self._on_add_transaction,
+            style="Accent.TButton"
+        )
+        self.add_transaction_button.pack(pady=8)
+        
+        self.buttons = [button_container, self.add_transaction_button]
+        print(f"[DEBUG] Add Transaction button created, {len(self.buttons)} buttons tracked")
+    
+    def show_add_mode_buttons(self):
+        """Show the add mode action buttons."""
+        # Create a centered container for buttons
+        button_container = ttk.Frame(self.button_frame)
+        button_container.pack(expand=True)
+        
+        # Add mode buttons (same as edit mode but no Delete Transaction)
+        self.cancel_button = ttk.Button(button_container, text="Cancel", command=self.on_exit_callback)
+        self.cancel_button.pack(side="left", padx=3, pady=8)
+        
+        self.save_button = ttk.Button(button_container, text="Save Transaction", 
+                                     command=self.on_save_callback, style="Accent.TButton")
+        self.save_button.pack(side="left", padx=3, pady=8)
+        
+        # Split management buttons
+        self.add_split_button = ttk.Button(button_container, text="Add Split", command=self._placeholder_add_split)
+        self.add_split_button.pack(side="left", padx=3, pady=8)
+        
+        self.delete_split_button = ttk.Button(button_container, text="Delete Split", command=self._placeholder_delete_split)
+        self.delete_split_button.pack(side="left", padx=3, pady=8)
+        
+        self.balance_split_button = ttk.Button(button_container, text="Balance Split", command=self._placeholder_balance_split)
+        self.balance_split_button.pack(side="left", padx=3, pady=8)
+        
+        self.buttons = [button_container, self.cancel_button, self.save_button, self.add_split_button, 
+                       self.delete_split_button, self.balance_split_button]
+    
+    def _on_add_transaction(self):
+        """Handle Add Transaction button click."""
+        if self.application and hasattr(self.application, 'enter_add_mode'):
+            self.application.enter_add_mode()
+        else:
+            print("Add Transaction clicked - application reference not available")
     
     def _placeholder_add_split(self):
         """Add a new split row to the current transaction."""
