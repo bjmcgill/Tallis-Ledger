@@ -7,16 +7,6 @@ DROP TABLE IF EXISTS Transactions;
 DROP TABLE IF EXISTS Fund;
 DROP TABLE IF EXISTS Account;
 
--- Create Transaction table
-CREATE TABLE Transactions (
-    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-    UserDate DATE,
-    Description TEXT CHECK(length(Description) <= 100),
-    Created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    Deleted BOOLEAN DEFAULT 0,
-    Deleted_at DATETIME
-);
-
 -- Create Fund table
 CREATE TABLE Fund (
     Id INTEGER PRIMARY KEY,
@@ -29,6 +19,16 @@ CREATE TABLE Account (
     Id INTEGER PRIMARY KEY,
     Name TEXT CHECK(length(Name) <= 50),
     Type TEXT CHECK(length(Type) <= 25)
+);
+
+-- Create Transaction table
+CREATE TABLE Transactions (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    UserDate DATE,
+    Description TEXT CHECK(length(Description) <= 100),
+    Created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    Deleted BOOLEAN DEFAULT 0,
+    Deleted_at DATETIME
 );
 
 -- Create Split table

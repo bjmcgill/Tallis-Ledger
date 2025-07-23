@@ -188,7 +188,8 @@ class Application:
         if _DEBUG:
             # Debug mode: Use default database file
             db_path = "your_ledger.db"
-            print(f"Debug mode: Using default database: {db_path}")
+            if _DEBUG:
+                print(f"Debug mode: Using default database: {db_path}")
         else:
             # Production mode: Show file dialog to select database
             db_path = filedialog.askopenfilename(
@@ -564,7 +565,8 @@ class Application:
                 self.cancel_edit_mode()  # This will also handle add mode cleanup
             else:
                 mode_name = "save" if self.mode == "edit" else "create"
-                print(f"Failed to {mode_name} transaction")
+                if _DEBUG:
+                    print(f"Failed to {mode_name} transaction")
     
     def _validate_transaction_balance(self, current_data):
         """Validate that the transaction amounts sum to zero."""
@@ -612,7 +614,8 @@ class Application:
     
     def cancel_edit_mode(self):
         """Cancel edit/add mode and restore the normal ledger view."""
-        print(f"[DEBUG] cancel_edit_mode called, current mode: {self.mode}")
+        if _DEBUG:
+            print(f"[DEBUG] cancel_edit_mode called, current mode: {self.mode}")
         if self.mode in ["edit", "add"]:
             # Restore original ledger view with balance column
             if self.current_filter_type == "account":
@@ -640,15 +643,19 @@ class Application:
                 pass  # Ignore if edit_validation doesn't work with None
             
             # Hide edit mode buttons
-            print("[DEBUG] About to hide edit buttons")
+            if _DEBUG:
+                print("[DEBUG] About to hide edit buttons")
             self.edit_mode_manager.hide_edit_buttons()
-            print("[DEBUG] Edit buttons hidden")
+            if _DEBUG:
+                print("[DEBUG] Edit buttons hidden")
             self.ledger_sheet.set_all_readonly(True)
             
             # Show Add Transaction button when returning to initial mode
-            print("[DEBUG] About to show Add Transaction button")
+            if _DEBUG:
+                print("[DEBUG] About to show Add Transaction button")
             self.edit_mode_manager.show_add_transaction_button()
-            print("[DEBUG] Add Transaction button shown")
+            if _DEBUG:
+                print("[DEBUG] Add Transaction button shown")
     
     def add_split_row(self):
         """Add a new split row to the current transaction in edit/add mode after the last selected row."""

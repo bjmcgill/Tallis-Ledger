@@ -6,6 +6,8 @@ Contains reusable UI components like selectors and managers.
 import tkinter as tk
 from tkinter import ttk
 
+_DEBUG = False  # Set to True for debugging output
+
 
 class AccountSelector:
     """Manages the account dropdown selection widget."""
@@ -130,32 +132,40 @@ class EditModeManager:
     
     def hide_edit_buttons(self):
         """Hide the edit mode action buttons."""
-        print(f"[DEBUG] hide_edit_buttons called, {len(self.buttons)} buttons to destroy")
+        if _DEBUG:
+            print(f"[DEBUG] hide_edit_buttons called, {len(self.buttons)} buttons to destroy")
         
         # Destroy all existing buttons
         for i, button in enumerate(self.buttons):
             try:
-                print(f"[DEBUG] Destroying button {i}: {button}")
+                if _DEBUG:
+                    print(f"[DEBUG] Destroying button {i}: {button}")
                 button.destroy()
             except Exception as e:
-                print(f"[DEBUG] Error destroying button {i}: {e}")
+                if _DEBUG:
+                    print(f"[DEBUG] Error destroying button {i}: {e}")
         self.buttons = []
         
         # Also clear any remaining widgets in the button frame
         children = self.button_frame.winfo_children()
-        print(f"[DEBUG] Found {len(children)} children in button frame")
+        if _DEBUG:
+            print(f"[DEBUG] Found {len(children)} children in button frame")
         for widget in children:
             try:
-                print(f"[DEBUG] Destroying child widget: {widget}")
+                if _DEBUG:
+                    print(f"[DEBUG] Destroying child widget: {widget}")
                 widget.destroy()
             except Exception as e:
-                print(f"[DEBUG] Error destroying child widget: {e}")
+                if _DEBUG:
+                    print(f"[DEBUG] Error destroying child widget: {e}")
         
-        print("[DEBUG] hide_edit_buttons completed")
+        if _DEBUG:
+            print("[DEBUG] hide_edit_buttons completed")
     
     def show_add_transaction_button(self):
         """Show the Add Transaction button for initial mode."""
-        print("[DEBUG] show_add_transaction_button called")
+        if _DEBUG:
+            print("[DEBUG] show_add_transaction_button called")
         
         # Create a centered container for the button
         button_container = ttk.Frame(self.button_frame)
@@ -170,7 +180,8 @@ class EditModeManager:
         self.add_transaction_button.pack(pady=8)
         
         self.buttons = [button_container, self.add_transaction_button]
-        print(f"[DEBUG] Add Transaction button created, {len(self.buttons)} buttons tracked")
+        if _DEBUG:
+            print(f"[DEBUG] Add Transaction button created, {len(self.buttons)} buttons tracked")
     
     def show_add_mode_buttons(self):
         """Show the add mode action buttons."""
@@ -204,32 +215,37 @@ class EditModeManager:
         if self.application and hasattr(self.application, 'enter_add_mode'):
             self.application.enter_add_mode()
         else:
-            print("Add Transaction clicked - application reference not available")
+            if _DEBUG:
+                print("Add Transaction clicked - application reference not available")
     
     def _placeholder_add_split(self):
         """Add a new split row to the current transaction."""
         if self.application and hasattr(self.application, 'add_split_row'):
             self.application.add_split_row()
         else:
-            print("Add Split clicked - application reference not available")
+            if _DEBUG:
+                print("Add Split clicked - application reference not available")
     
     def _placeholder_delete_split(self):
         """Delete the currently selected split row."""
         if self.application and hasattr(self.application, 'delete_split_row'):
             self.application.delete_split_row()
         else:
-            print("Delete Split clicked - application reference not available")
+            if _DEBUG:
+                print("Delete Split clicked - application reference not available")
     
     def _placeholder_balance_split(self):
         """Balance the currently selected split to ensure transaction sums to zero."""
         if self.application and hasattr(self.application, 'balance_split_row'):
             self.application.balance_split_row()
         else:
-            print("Balance Split clicked - application reference not available")
+            if _DEBUG:
+                print("Balance Split clicked - application reference not available")
     
     def _placeholder_delete_transaction(self):
         """Delete the current transaction (soft delete)."""
         if self.application and hasattr(self.application, 'delete_transaction'):
             self.application.delete_transaction()
         else:
-            print("Delete Transaction clicked - application reference not available")
+            if _DEBUG:
+                print("Delete Transaction clicked - application reference not available")

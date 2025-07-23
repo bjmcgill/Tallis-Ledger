@@ -6,6 +6,8 @@ Handles all SQLite database operations and queries.
 import sqlite3
 import pandas as pd
 
+_DEBUG = False  # Set to True for debugging output
+
 
 class DatabaseManager:
     """Handles all SQLite database operations and queries."""
@@ -112,7 +114,8 @@ class DatabaseManager:
         except Exception as e:
             # Rollback on error
             self.conn.rollback()
-            print(f"Error saving transaction: {e}")
+            if _DEBUG:
+                print(f"Error saving transaction: {e}")
             return False
     
     def _delete_transaction_data(self, tran_id):
@@ -168,7 +171,8 @@ class DatabaseManager:
                 
         except Exception as e:
             self.conn.rollback()
-            print(f"Error soft deleting transaction {tran_id}: {e}")
+            if _DEBUG:
+                print(f"Error soft deleting transaction {tran_id}: {e}")
             return False
     
     def add_new_transaction(self, user_date, description, splits_data):
@@ -201,7 +205,8 @@ class DatabaseManager:
         except Exception as e:
             # Rollback on error
             self.conn.rollback()
-            print(f"Error adding new transaction: {e}")
+            if _DEBUG:
+                print(f"Error adding new transaction: {e}")
             return False
     
     # ========== CONNECTION MANAGEMENT ==========

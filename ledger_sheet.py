@@ -5,6 +5,8 @@ Wraps the tksheet widget and handles data display.
 
 from tksheet import Sheet
 
+_DEBUG = False  # Set to True for debugging output
+
 
 class LedgerSheet:
     """Wraps the tksheet widget and handles data display."""
@@ -89,7 +91,8 @@ class LedgerSheet:
                     set_value=current_value
                 )
         except ValueError:
-            print("AccountChoice column not found in headers")
+            if _DEBUG:
+                print("AccountChoice column not found in headers")
     
     def setup_fund_dropdown(self, start_row, end_row):
         """Set up fund dropdown for the specified row range."""
@@ -111,7 +114,8 @@ class LedgerSheet:
                     set_value=current_value
                 )
         except ValueError:
-            print("FundChoice column not found in headers")
+            if _DEBUG:
+                print("FundChoice column not found in headers")
     
     def setup_dropdowns(self, start_row, end_row):
         """Set up both account and fund dropdowns for the specified row range."""

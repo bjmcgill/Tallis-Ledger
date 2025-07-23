@@ -1,13 +1,15 @@
 # Tallis-Ledger
 A concise ledger based accounting system for small charities.
 
+![Screenshot]("https/github.com/bjmcgill/Tallis-Ledger/Screenshot.png")
+
 You will need the following software installed on your computer :
 
 ```
 python
 git
 sqlite tools
-DB Browser
+DB Browser (or an alternative such as DBeaver)
 ```
 
 Once you have installed git you can clone the repository by entering :
@@ -54,6 +56,12 @@ sqlite3 your_ledger.db < insertdata.sql
 ```
 
 Or if you wish to enter data into your own Account and Fund tables use DB Browser. DB Browser is also useful for creating your own reports by entering SQL Select Queries. 
+
+To start the application type :
+
+```
+python main.py
+```
 
 This program gives users the power and flexibility of double entry bookkeeping without the hassle of complicated accounting software like Sage and Gnucash. On opening the application (and selecting a valid database), you are met with a simple ledger window which you can filter on fund or account. There are three modes: Initial - Where you can add or select a transaction; Add - Where you can add a transaction; and Edit - Where you can select and edit a previous transaction.
 
