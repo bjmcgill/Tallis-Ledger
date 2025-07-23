@@ -1,7 +1,7 @@
 # Tallis-Ledger
 A concise ledger based accounting system for small charities.
 
-![Screenshot](./Screenshot.png)
+![Screenshot](./Screenshot.pngy)
 
 You will need the following software installed on your computer :
 
@@ -43,6 +43,19 @@ Now to install the necessary libraries on a Windows, macOS or Linux computer typ
 pip install -r requirements.txt
 ```
 
+When I was testing my program on Windows, I got the error message library numpy=2.3.1 not available. I fixed this by entering :
+
+```
+pip install pandas
+pip install tksheet
+```
+
+This seemed to work fine. You can see what library versions were installed by typing :
+
+```
+pip freeze
+```
+
 You just need to create the tables now by typing :
 
 ```
@@ -55,7 +68,9 @@ You can insert sample data now by typing :
 sqlite3 your_ledger.db < insertdata.sql
 ```
 
-Or if you wish to enter data into your own Account and Fund tables use DB Browser. DB Browser is also useful for creating your own reports by entering SQL Select Queries. 
+For some reason Windows sqlite doesn't like literal strings in double quotes. It seemed to work fine when I changed double quotes to single quotes.
+
+If you wish to enter data into your own Account and Fund tables use DB Browser. DB Browser is also useful for creating your own reports by entering SQL Select Queries. 
 
 To start the application type :
 
