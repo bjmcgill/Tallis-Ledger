@@ -847,6 +847,9 @@ class Application:
                     if _DEBUG:
                         print(f"Successfully soft deleted transaction {self.selected_tran_id}")
                     
+                    # Store the transaction ID before cancel_edit_mode resets it
+                    deleted_tran_id = self.selected_tran_id
+                    
                     # Exit edit mode and refresh the view
                     self.cancel_edit_mode()
                     
@@ -859,7 +862,7 @@ class Application:
                     # Show success message
                     messagebox.showinfo(
                         "Transaction Deleted",
-                        f"Transaction {self.selected_tran_id} has been successfully deleted."
+                        f"Transaction {deleted_tran_id} has been successfully deleted."
                     )
                 else:
                     # Show error message
