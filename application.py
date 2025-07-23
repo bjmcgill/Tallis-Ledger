@@ -429,6 +429,9 @@ class Application:
             # Set focus to Description column (column 3) of the first editable row
             self.ledger_sheet.sheet.set_currently_selected(self.start_idx, 3)
             
+            # Scroll to make the editable rows visible
+            self.ledger_sheet.sheet.see(self.start_idx, 3)
+            
             # Hide Add Transaction button and show add mode buttons
             self.edit_mode_manager.hide_edit_buttons()
             self.edit_mode_manager.show_add_mode_buttons()
