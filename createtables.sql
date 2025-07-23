@@ -57,10 +57,10 @@ CREATE INDEX idx_split_amount ON Split(Amount);
 CREATE INDEX idx_split_fund_id ON Split(FundId);
 CREATE INDEX idx_split_account_id ON Split(AccountId);
 
--- Insert default "No Fund" entry
+-- Insert default 'No Fund' entry
 INSERT INTO Fund (Id, Name, Type) VALUES
-(0, "No Fund", "SPECIAL");
+(0, 'No Fund', 'SPECIAL');
 
--- Insert default "No Account" entry
+-- Insert default 'No Account' entry
 INSERT INTO Account (Id, Name, Type) VALUES
-(0, "No Account", "SPECIAL");
+(0, 'No Account', 'SPECIAL');
