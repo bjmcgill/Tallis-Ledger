@@ -1,7 +1,7 @@
 # Tallis-Ledger
 A concise ledger based accounting system for small charities.
 
-![Screenshot](./Screenshot.pngy)
+![Screenshot](./Screenshot.png)
 
 You will need the following software installed on your computer :
 
