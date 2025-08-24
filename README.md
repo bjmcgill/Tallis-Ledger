@@ -116,6 +116,36 @@ Once the Accounts and Fund have been entered into the tables using DB Browser, y
 
 If you are still confused, I will write more extensive documentation for the application in this repository's wiki.
 
+## Creating Reports
+
+Tallis Ledger includes a sql file called views.sql which you can use to create reports on entered data.
+
+To add the views into the database yourledger.db enter the following command:
+
+```
+sqlite3 yourledger.db < views.sql
+```
+
+The createtables.sql file must have been entered into the database first.
+
+After you have typed in the preceeding command, you can launch DB Browser and you can select the views.
+
+LedgerViewWithFundBalance2 shows all the transactions which have been entered partitioned by Fund, and containing a balance column.
+
+If you only want to see the transactions for a particular fund you can enter the following sql and execute it within DB Browser:
+
+```
+SELECT * FROM LedgerViewWithFundBalance2 WHERE FundId=200
+```
+
+LedgerViewWithAccountBalance2 has the same functions as LedgerViewWithFundBalance2 but partitioned by Account.
+
+If you want to list all the funds in your database and examine their balances you can use the view FundSummaryView.
+
+AccountSummaryView has the same functionality as FundSummaryView but with respect to accounts.
+
+Finally you can use the AccountTypeSummaryView to find the totals of transaction amounts grouped by AccountType.
+
 Thankyou for choosing Tallis Ledger.
 
 BJ McGill 22-07-2025
