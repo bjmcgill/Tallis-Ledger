@@ -3,6 +3,12 @@ A concise ledger based accounting system for small charities.
 
 ![Screenshot](./Screenshot.png)
 
+BJ McGill 24-02-2026 Note:
+
+There are some bugs in this program. Nonetheless I have been using it succesfully to keep the accounts of the charity I work for. Sometimes some extraneous transactions or splits are saved when you click on save transaction. These will appear in the ledger window, and can easily be deleted.
+
+I hope to write a web based version of this app using Typescript and mySQL in the second half of 2026. This will be a lot cleaner and should be free of bugs. Keep looking in my parent folder for this to appear
+
 You will need the following software installed on your computer :
 
 ```
